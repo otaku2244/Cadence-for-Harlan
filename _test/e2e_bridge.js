@@ -58,7 +58,7 @@ const llm = http.createServer((req, res) => {
     // connection 取**正向**（+0.15 = 「她敷衍」那一档）：撤掉 resetConnection 之后，
     // 这是唯一能证明"delta 真的推得动 c"的方向 —— 负向在 c=0 时无论如何都是 0。
     res.end(JSON.stringify({
-      choices: [{ message: { content: JSON.stringify({ pride: -0.15, valence: 0.10, arousal: -0.08, connection: 0.15 }) } }],
+      choices: [{ message: { content: JSON.stringify({ poise: -0.15, valence: 0.10, arousal: -0.08, connection: 0.15 }) } }],
     }));
   });
 });
@@ -176,7 +176,7 @@ function check(name, cond, detail) {
   // ── 用例 3b：判定器按「轮次」去重（工具轮）──
   // 模型调工具后 Operit 会用**同一份 messages** 再发一次请求。
   // 不去重 → 判定器把同一段对话判 N 次、delta 叠 N 次
-  //（2026-10-07 线上实测同一轮判 4 次：pride 该掉 0.12 实际掉 0.66）。
+  //（2026-10-07 线上实测同一轮判 4 次：poise 该掉 0.12 实际掉 0.66）。
   await wait(900);                       // 等用例 3 的异步判定跑完
   const llmBaseline = llmCalled;
 
@@ -203,7 +203,7 @@ function check(name, cond, detail) {
   await wait(1200);
   check('判定器被调用', llmCalled > 0, 'calls=' + llmCalled);
   const st = JSON.parse(fs.readFileSync(STATE, 'utf8'));
-  check('delta 已叠加到状态（pride 为负）', st.pride < 0, 'pride=' + st.pride);
+  check('delta 已叠加到状态（poise 为负）', st.poise < 0, 'poise=' + st.poise);
   check('connection 由判定器 delta 直接驱动（resetConnection 已撤）：2 次 +0.15 → 0.30',
     Math.abs(st.connection - 0.30) < 0.01, 'connection=' + st.connection);
   check('0.30 已越过留意线 0.20（旧行为下这个值被 reset 钉死在 ≤0.15）',

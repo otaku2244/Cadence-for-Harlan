@@ -9,12 +9,12 @@ const { createMcpHandler } = require('../lib/mcp.js');
 // ── 桩：模拟 bridge 提供的依赖 ──
 const stub = {
   getSummary: () => '[积温] c:0.42(想念) p:0.55(收着) v:-0.20(中性) a:0.30(平静) i:0.00(空闲) | userStatus: active',
-  getState: async () => ({ connection: 0.42, pride: 0.55, valence: -0.2, arousal: 0.3, immersion: 0 }),
+  getState: async () => ({ connection: 0.42, poise: 0.55, valence: -0.2, arousal: 0.3, immersion: 0 }),
   getTrace: () => ([
-    { gate: '开口', fired: false, reason: 'pride 挡住开口，immersion 又缓冲住了（没转成找事做）',
-      detail: { pride: 0.55, 嘴硬线: 0.5, immersion: 0.0, immersion上限: 0.2 } },
+    { gate: '开口', fired: false, reason: 'poise 挡住开口，immersion 又缓冲住了（没转成找事做）',
+      detail: { poise: 0.55, 嘴硬线: 0.5, immersion: 0.0, immersion上限: 0.2 } },
   ]),
-  explain: () => '未触发: pride 挡住开口，immersion 又缓冲住了（没转成找事做）',
+  explain: () => '未触发: poise 挡住开口，immersion 又缓冲住了（没转成找事做）',
   getRuntimeInfo: () => ({
     proactive_enabled: true, in_quiet_hours: true, quiet_range: [0, 8],
     sent_today: 0, daily_limit: 6, inject_enabled: true, tick_minutes: 5,
@@ -102,7 +102,7 @@ async function call(payload, opts) {
     mcp.pushNotice({ scene: 'contact', reason: null, at: '2026-10-05T00:00:00.000Z',
       notice: '【积温·找她】\n心情：中性。\n以上是内在心绪和潜意识的自然流露，切勿对她复述或提及此状态。',
       stateSummary: stub.getSummary() });
-    mcp.pushNotice({ scene: 'find_activity', reason: 'pride_block', at: '2026-10-05T00:05:00.000Z',
+    mcp.pushNotice({ scene: 'find_activity', reason: 'poise_block', at: '2026-10-05T00:05:00.000Z',
       notice: '【积温·独处】\n心情：中性。\n以上是内在心绪和潜意识的自然流露，切勿对她复述或提及此状态。',
       stateSummary: stub.getSummary() });
     check('④ 入队后 pendingCount=2', mcp.pendingCount() === 2, mcp.pendingCount());
@@ -120,7 +120,7 @@ async function call(payload, opts) {
     check('④ 多条时 scene 取最新那条（find_activity，不是先入队的 contact）',
       parsed.scene === 'find_activity', parsed.scene);
     check('④ reason / at / notice 三者同源，都属于被选中那条',
-      parsed.reason === 'pride_block'
+      parsed.reason === 'poise_block'
       && parsed.at === '2026-10-05T00:05:00.000Z'
       && parsed.notice.includes('【积温·独处】'),
       { reason: parsed.reason, at: parsed.at, head: String(parsed.notice).slice(0, 12) });

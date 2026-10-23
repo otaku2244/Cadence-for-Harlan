@@ -23,12 +23,12 @@ const bI = (st, g) => buildInjectionBlock(st, g, desc);
 const tone = grid;
 
 const cases = [
-  ['v=0.45 a=0.00 p=0.20 c=0.10  ← 默认路径', { valence: 0.45, arousal: 0.00, pride: 0.20, connection: 0.10, immersion: 0.30 }],
-  ['v=0.40 a=0.10 p=0.60 c=0.10', { valence: 0.40, arousal: 0.10, pride: 0.60, connection: 0.10, immersion: 0.30 }],
-  ['v=0.50 a=0.50 p=0.20 c=0.10', { valence: 0.50, arousal: 0.50, pride: 0.20, connection: 0.10, immersion: 0.30 }],
-  ['v=0.50 a=-0.50 p=0.60 c=0.10', { valence: 0.50, arousal: -0.50, pride: 0.60, connection: 0.10, immersion: 0.30 }],
-  ['v=0.45 a=0.00 p=0.20 c=0.40  ← 越线（contactOverride 已退役，45 格照样在）', { valence: 0.45, arousal: 0.00, pride: 0.20, connection: 0.40, immersion: 0.30 }],
-  ['v=0.45 a=0.00 p=0.60 c=0.40  ← 端着（pride 高）', { valence: 0.45, arousal: 0.00, pride: 0.60, connection: 0.40, immersion: 0.30 }],
+  ['v=0.45 a=0.00 p=0.20 c=0.10  ← 默认路径', { valence: 0.45, arousal: 0.00, poise: 0.20, connection: 0.10, immersion: 0.30 }],
+  ['v=0.40 a=0.10 p=0.60 c=0.10', { valence: 0.40, arousal: 0.10, poise: 0.60, connection: 0.10, immersion: 0.30 }],
+  ['v=0.50 a=0.50 p=0.20 c=0.10', { valence: 0.50, arousal: 0.50, poise: 0.20, connection: 0.10, immersion: 0.30 }],
+  ['v=0.50 a=-0.50 p=0.60 c=0.10', { valence: 0.50, arousal: -0.50, poise: 0.60, connection: 0.10, immersion: 0.30 }],
+  ['v=0.45 a=0.00 p=0.20 c=0.40  ← 越线（contactOverride 已退役，45 格照样在）', { valence: 0.45, arousal: 0.00, poise: 0.20, connection: 0.40, immersion: 0.30 }],
+  ['v=0.45 a=0.00 p=0.60 c=0.40  ← 端着（poise 高）', { valence: 0.45, arousal: 0.00, poise: 0.60, connection: 0.40, immersion: 0.30 }],
 ];
 
 for (const [name, st] of cases) {
@@ -54,11 +54,11 @@ for (const [name, st] of cases) {
 console.log('='.repeat(66));
 console.log('[主动唤醒 proactive / contact]  v=0.30 a=0.00 p=0.20 c=0.40');
 console.log('-'.repeat(66));
-console.log(bN({ valence: 0.30, arousal: 0.00, pride: 0.20, connection: 0.40, immersion: 0.30 }, tone, { scene: 'contact' }, cfg.sceneOverride, cfg.proactiveOutlet));
+console.log(bN({ valence: 0.30, arousal: 0.00, poise: 0.20, connection: 0.40, immersion: 0.30 }, tone, { scene: 'contact' }, cfg.sceneOverride, cfg.proactiveOutlet));
 console.log();
 
 console.log('='.repeat(66));
-console.log('[主动唤醒 proactive / find_activity]  reason=pride_block');
+console.log('[主动唤醒 proactive / find_activity]  reason=poise_block');
 console.log('-'.repeat(66));
-console.log(bN({ valence: 0.00, arousal: 0.00, pride: 0.70, connection: 0.20, immersion: 0.30 }, tone, { scene: 'find_activity', reason: 'pride_block' }, cfg.sceneOverride, cfg.proactiveOutlet));
+console.log(bN({ valence: 0.00, arousal: 0.00, poise: 0.70, connection: 0.20, immersion: 0.30 }, tone, { scene: 'find_activity', reason: 'poise_block' }, cfg.sceneOverride, cfg.proactiveOutlet));
 console.log();

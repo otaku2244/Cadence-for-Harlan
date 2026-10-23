@@ -7,7 +7,7 @@
 //   描述层由 desc 提供，拼在 45 格之前
 //   bridge.js 里的非回环轮：connection 由判定器 delta 驱动（2026-10-08 前是 resetConnection 归零）
 //   → 描述层仍不出第 1 段（段1 是时间维度的话，此刻块用不上；与 connection 取值无关）
-//   → urgencyBoost 四档已全 null → 正文没有 urgency 尾注 → 45 格恒等于 profiles[簇][pride档]
+//   → urgencyBoost 四档已全 null → 正文没有 urgency 尾注 → 45 格恒等于 profiles[簇][poise档]
 
 const fs = require('fs');
 const path = require('path');
@@ -35,7 +35,7 @@ const CLUSTERS = [
   ['calm', 0.00, -0.60],
   ['neutral', 0.00, 0.00],
 ];
-// pride 五档的代表值（对应 vendor 的分档：>0.8/>0.5/>0.3/>0.1/else）
+// poise 五档的代表值（对应 vendor 的分档：>0.8/>0.5/>0.3/>0.1/else）
 const TIERS = [
   [1, 0.05, '≤0.1'],
   [2, 0.20, '0.1~0.3'],
@@ -43,7 +43,7 @@ const TIERS = [
   [4, 0.65, '0.5~0.8'],
   [5, 0.90, '>0.8'],
 ];
-const stateOf = (v, a, p) => ({ valence: v, arousal: a, pride: p, connection: 0, immersion: 0.3 });
+const stateOf = (v, a, p) => ({ valence: v, arousal: a, poise: p, connection: 0, immersion: 0.3 });
 
 const out = [];
 const w = (s = '') => out.push(s);
@@ -58,7 +58,7 @@ w('## 块骨架');
 w();
 w('```');
 w('【积温·此刻】                       ← 块头，固定');
-w('<45 格正文，一条>                    ← profiles[簇][pride档]，恒为一行');
+w('<45 格正文，一条>                    ← profiles[簇][poise档]，恒为一行');
 w('【此状态为潜意识的底色沉淀，自然浸润在回应里，不作任何元说明或刻意提及。】  ← 边界句，固定');
 w('```');
 w();
@@ -76,12 +76,12 @@ w();
 // ── 45 格全表 ─────────────────────────────────────────────────
 w('## 一、正文全表（9 簇 × 5 档 = 45 格）');
 w();
-w('此刻块的正文只由 (簇, pride档) 决定。下面是全部 45 条 —— 线上会发出的就是这些句子，别无其它。');
+w('此刻块的正文只由 (簇, poise档) 决定。下面是全部 45 条 —— 线上会发出的就是这些句子，别无其它。');
 w();
 for (const [name, v, a] of CLUSTERS) {
   w(`### ${name}（v=${v.toFixed(2)}, a=${a.toFixed(2)}）`);
   w();
-  w('| pride档 | p 区间 | 正文 |');
+  w('| poise档 | p 区间 | 正文 |');
   w('|---|---|---|');
   for (const [tier, p, range] of TIERS) {
     const st = stateOf(v, a, p);

@@ -21,8 +21,8 @@ const CLUSTERS = {
   calm:      { v: 0.0,  a: -0.5 },
   neutral:   { v: 0.0,  a: 0.0  },
 };
-// pride → 档位（与 vendor classifyPride 一致）
-const PRIDE = { 1: -0.05, 2: 0.2, 3: 0.4, 4: 0.65, 5: 0.9 };
+// poise → 档位（与 vendor classifyPoise 一致）
+const POISE = { 1: -0.05, 2: 0.2, 3: 0.4, 4: 0.65, 5: 0.9 };
 
 const out = [];
 function w(s) { out.push(s); }
@@ -34,7 +34,7 @@ w('');
 w('结构：');
 w('- reactive  = 用户开口时注入到消息里的「此刻块」风格指令（getStyleGuidance）');
 w('- proactive = 阈值触发主动唤醒时的通知正文（getPromptContext）');
-w('- 每条 = 45 格正文，由 V×A 簇 + pride 档决定。');
+w('- 每条 = 45 格正文，由 V×A 簇 + poise 档决定。');
 w('- 2026-10-08 起 `connection` **不再进 45 格**（urgency 尾注与 contactOverride 已退役），');
 w('  它现在只作用在文末列出的**描述层第 1 段**。');
 w('');
@@ -46,12 +46,12 @@ for (const [cluster, va] of Object.entries(CLUSTERS)) {
   w('═'.repeat(74));
 
   for (const tier of [1, 2, 3, 4, 5]) {
-    const st = { connection: 0, pride: PRIDE[tier], valence: va.v, arousal: va.a };
+    const st = { connection: 0, poise: POISE[tier], valence: va.v, arousal: va.a };
     const re = tg.getStyleGuidance(st);
     const pr = tg.getPromptContext(st);
 
     w('');
-    w(`── pride 档 ${tier} (p=${PRIDE[tier]}) ──`);
+    w(`── poise 档 ${tier} (p=${POISE[tier]}) ──`);
     w('  [reactive]');
     for (const ln of String(re || '(空)').split('\n')) w('    ' + ln);
     w('  [proactive]');
@@ -76,8 +76,8 @@ for (const it of cfg.describe.connection) {
 w('');
 w('> 此刻块（reactive）不出这一段：那块建块时 connection 恒为 0。');
 w('');
-w('### 段2 骄傲（`pride`，6 档）');
-for (const it of cfg.describe.pride) {
+w('### 段2 骄傲（`poise`，6 档）');
+for (const it of cfg.describe.poise) {
   const label = it.max === undefined ? '≥ 0.80' : `< ${it.max.toFixed(2)}`;
   w(`  [${label}] ${it.text}`);
 }
@@ -115,7 +115,7 @@ w('且在「找她」块里与 contactOverride 叠成三句同义反复。');
 w('⚠️ 置 null 而非删键 —— 不传 urgencyBoost 会让 vendor 回落到内置 DEFAULT_URGENCY。');
 w('');
 w('### contactOverride —— 键已删除');
-w('原用途：connection 过线时顶掉由 pride 决定的基础档。退役原因：它把**整条 45 格**');
+w('原用途：connection 过线时顶掉由 poise 决定的基础档。退役原因：它把**整条 45 格**');
 w('一起顶掉（只留「基调句 + 尾注」），导致「找她」块里 45 格一个字都出不来。');
 w('原文案留档：git 历史（de0af31 及之前）。');
 w('');
@@ -125,4 +125,4 @@ const lines = out.join('\n');
 fs.writeFileSync(path.join(__dirname, 'all-prompts.txt'), lines, 'utf8');
 console.log('已写出 _test/all-prompts.txt');
 console.log('总行数: ' + out.length);
-console.log('总格数: 9 簇 × 5 pride 档 = 45 格 × 2 模式 = 90 条（描述层另列）');
+console.log('总格数: 9 簇 × 5 poise 档 = 45 格 × 2 模式 = 90 条（描述层另列）');

@@ -1,5 +1,5 @@
 // jiwen/tone-grid.js
-// 语调网格模块 — 将 V×A×pride 五轴数值翻译成 LLM 说话指令
+// 语调网格模块 — 将 V×A×poise 五轴数值翻译成 LLM 说话指令
 //
 // 这是 jiwen 引擎的「人格皮肤层」。数学引擎算出状态数值，
 // 语调网格把数值变成具体的行为指令注入 LLM prompt。
@@ -24,7 +24,7 @@
 // 心情下具体会怎么做、用什么语气、对对方什么态度。
 //
 // 网格结构: 9 个情绪簇 (V×A 象限 + 单轴极端 + 中性)
-//          × 5 档 pride (从完全放软到全副武装)
+//          × 5 档 poise (从完全放软到全副武装)
 //          + connection 急迫度叠加
 
 // ── 默认语调网格（通用版）──────────────────────
@@ -82,7 +82,7 @@ const DEFAULT_PROFILES = {
     5: [ '即使心碎了也不想在对方面前倒下。不主动求助，但对方靠近时不推开。沉默里有一种"我需要你但我不会说"的信号。' ],
   },
 
-  // ─── 中性（无极端 V×A，pride 主导）───
+  // ─── 中性（无极端 V×A，poise 主导）───
   neutral: {
     1: [ '随性自然，像和老朋友闲聊。开亲昵的玩笑，挑刺但不真的弄疼——这只是一种相处方式，不是攻击。' ],
     2: [ '得体且温和。保持舒适的距离，既不显得过分亲热也不冷淡。正常的社交状态。' ],
@@ -171,8 +171,8 @@ function classifyCluster(v, a) {
   return 'neutral';
 }
 
-// ── pride → 档位 ──
-function classifyPride(p) {
+// ── poise → 档位 ──
+function classifyPoise(p) {
   if (p > 0.8) return 5;
   if (p > 0.5) return 4;
   if (p > 0.3) return 3;
@@ -207,15 +207,15 @@ function createToneGrid(opts = {}) {
 
   // ── 核心查表函数 ──
   function getUnifiedGuidance(state, mode) {
-    const { connection: c, pride: p, valence: v, arousal: a } = state;
+    const { connection: c, poise: p, valence: v, arousal: a } = state;
 
     const cluster = classifyCluster(v, a);
-    const prideTier = classifyPride(p);
+    const poiseTier = classifyPoise(p);
     const urgencyLevel = classifyUrgency(c);
 
     const lines = [];
     const profile = profiles[cluster] || profiles.neutral;
-    const coreLines = profile[prideTier] || profile[3]; // 回退到中间档
+    const coreLines = profile[poiseTier] || profile[3]; // 回退到中间档
     lines.push(...coreLines);
 
     const urgencyLine = urgency[urgencyLevel]?.[mode];

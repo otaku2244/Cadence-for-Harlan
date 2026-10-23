@@ -29,7 +29,7 @@ for (const raw of lines) {
   }
   if (!cur) continue;
   // ⚠️ 2026-10-08 起行格式里去掉了「× urgency (c=…)」—— connection 不再进 45 格。
-  const mCase = line.match(/^── pride 档 (\d) \(p=([\d.-]+)\)(.*)──/);
+  const mCase = line.match(/^── poise 档 (\d) \(p=([\d.-]+)\)(.*)──/);
   if (mCase) {
     curCase = { tier: mCase[1], p: mCase[2], reactive: [], proactive: [] };
     cur.cases.push(curCase);
@@ -51,7 +51,7 @@ for (const c of clusters) {
   body += `<h2>${esc(CLUSTER_CN[c.key] || c.key)} <span class="mono">v=${c.v} a=${c.a}</span></h2>`;
   for (const cs of c.cases) {
     body += `<details class="case">`;
-    body += `<summary><b>pride ${cs.tier}</b> <span class="mono">p=${cs.p}</span></summary>`;
+    body += `<summary><b>poise ${cs.tier}</b> <span class="mono">p=${cs.p}</span></summary>`;
     body += `<div class="pair">`;
     body += `<div class="col"><div class="tag">reactive · 此刻块</div>${cs.reactive.map((t) => `<p>${esc(t)}</p>`).join('') || '<p class="empty">（空）</p>'}</div>`;
     body += `<div class="col"><div class="tag">proactive · 主动唤醒</div>${cs.proactive.map((t) => `<p>${esc(t)}</p>`).join('') || '<p class="empty">（空）</p>'}</div>`;
@@ -94,7 +94,7 @@ summary:hover{background:rgba(0,0,0,.02)}
 @media(max-width:760px){.pair{grid-template-columns:1fr}.col + .col{border-left:0;border-top:1px solid var(--line)}}
 </style></head><body>
 <h1>积温桥 · 提示词全量验收清单</h1>
-<div class="sub">9 情绪簇 × 5 pride 档 = 45 格，每格含 reactive / proactive 两条 = 90 条。点击任意行展开。</div>
+<div class="sub">9 情绪簇 × 5 poise 档 = 45 格，每格含 reactive / proactive 两条 = 90 条。点击任意行展开。</div>
 <div class="legend">
   <ul style="margin:0;padding-left:18px">
     <li><b>reactive</b> — 用户开口时，注入到最后一条消息前面的「此刻块」风格指令</li>

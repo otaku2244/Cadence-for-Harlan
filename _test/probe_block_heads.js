@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const {
   buildInjectionBlock, buildProactiveNotice, stripJiwenBlocks,
-  assertBlockShape, SCENE_TAG, SURF_TAIL_LINE, BOUNDARY_LINE,
+  assertBlockShape, SCENE_TAG, BOUNDARY_LINE,
 } = require('../lib/inject-text.js');
 const { createToneGrid } = require('../vendor/tone-grid.js');
 const { createDescriber } = require('../lib/describe.js');
@@ -28,7 +28,7 @@ const bI = (st, g) => buildInjectionBlock(st, g, desc);
 const out = [];
 const w = (s) => out.push(s === undefined ? '' : s);
 
-const S = (o) => Object.assign({ connection: 0, pride: 0, valence: 0, arousal: 0, immersion: 0 }, o);
+const S = (o) => Object.assign({ connection: 0, poise: 0, valence: 0, arousal: 0, immersion: 0 }, o);
 
 // 昨天（10-06 15:17:06Z）线上真实回投的产物 —— 从 bridge.log 逐字抄来，
 // 用来保证对照里产物正文与线上一致。
@@ -41,11 +41,11 @@ const REAL_FINDING = {
 
 // ── 用例表 ─────────────────────────────────────────────
 const CASES = [
-  ['此刻块（reactive，每次聊天）', () => bI(S({ pride: 0.2, valence: 0.35 }), tg)],
-  ['找她 · c=0.30（未过线）', () => bN(S({ connection: 0.30, pride: 0.1 }), tg, { scene: 'contact' }, cfg.sceneOverride, cfg.proactiveOutlet)],
-  ['找她 · c=0.42 p=0.15（过线，pride 不高）', () => bN(S({ connection: 0.42, pride: 0.15 }), tg, { scene: 'contact' }, cfg.sceneOverride, cfg.proactiveOutlet)],
-  ['找她 · c=0.62（强制线以上）', () => bN(S({ connection: 0.62, pride: 0.15 }), tg, { scene: 'contact' }, cfg.sceneOverride, cfg.proactiveOutlet)],
-  ['独处 · pride_block（无产物）', () => bN(S({ connection: 0.40, pride: 0.60 }), tg, { scene: 'find_activity', reason: 'pride_block' }, cfg.sceneOverride, cfg.proactiveOutlet)],
+  ['此刻块（reactive，每次聊天）', () => bI(S({ poise: 0.2, valence: 0.35 }), tg)],
+  ['找她 · c=0.30（未过线）', () => bN(S({ connection: 0.30, poise: 0.1 }), tg, { scene: 'contact' }, cfg.sceneOverride, cfg.proactiveOutlet)],
+  ['找她 · c=0.42 p=0.15（过线，poise 不高）', () => bN(S({ connection: 0.42, poise: 0.15 }), tg, { scene: 'contact' }, cfg.sceneOverride, cfg.proactiveOutlet)],
+  ['找她 · c=0.62（强制线以上）', () => bN(S({ connection: 0.62, poise: 0.15 }), tg, { scene: 'contact' }, cfg.sceneOverride, cfg.proactiveOutlet)],
+  ['独处 · poise_block（无产物）', () => bN(S({ connection: 0.40, poise: 0.60 }), tg, { scene: 'find_activity', reason: 'poise_block' }, cfg.sceneOverride, cfg.proactiveOutlet)],
   ['独处 · low_valence（无产物）', () => bN(S({ valence: -0.55, arousal: 0.1 }), tg, { scene: 'find_activity', reason: 'low_valence' }, cfg.sceneOverride, cfg.proactiveOutlet)],
   ['独处 · high_arousal（无产物）', () => bN(S({ arousal: 0.65 }), tg, { scene: 'find_activity', reason: 'high_arousal' }, cfg.sceneOverride, cfg.proactiveOutlet)],
   ['独处 · surf 有产物（昨天线上那条）', () => bN(S({ connection: 0.23 }), tg, { scene: 'find_activity', reason: 'surf', finding: REAL_FINDING }, cfg.sceneOverride, cfg.proactiveOutlet)],
@@ -123,10 +123,10 @@ w('');
 // ── 三、三条路径文案差异 ──
 w('## 三、find_activity 的三条路径，文案长什么样');
 w('');
-const noFinding = bN(S({ connection: 0.40, pride: 0.60 }), tg, { scene: 'find_activity', reason: 'pride_block' }, cfg.sceneOverride, cfg.proactiveOutlet);
+const noFinding = bN(S({ connection: 0.40, poise: 0.60 }), tg, { scene: 'find_activity', reason: 'poise_block' }, cfg.sceneOverride, cfg.proactiveOutlet);
 const withFinding = bN(S({ connection: 0.23 }), tg, { scene: 'find_activity', reason: 'surf', finding: REAL_FINDING }, cfg.sceneOverride, cfg.proactiveOutlet);
 const failed = bN(S({ connection: 0.23 }), tg, { scene: 'find_activity', reason: 'surf', failure: '没翻出什么合适的（超时）。' }, cfg.sceneOverride, cfg.proactiveOutlet);
-const contactBlk = bN(S({ connection: 0.42, pride: 0.15 }), tg, { scene: 'contact' }, cfg.sceneOverride, cfg.proactiveOutlet);
+const contactBlk = bN(S({ connection: 0.42, poise: 0.15 }), tg, { scene: 'contact' }, cfg.sceneOverride, cfg.proactiveOutlet);
 
 const table = [
   ['找她（contact）', contactBlk],

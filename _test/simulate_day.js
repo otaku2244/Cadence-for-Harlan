@@ -40,7 +40,7 @@ const jiwen = createJiwen({
   connectionRateFn: () => 0.0007,
   onSave: async (s) => { store = JSON.parse(JSON.stringify(s)); },
   onLoad: async () => store || {
-    connection: 0, pride: 0, valence: 0, arousal: 0, immersion: 0,
+    connection: 0, poise: 0, valence: 0, arousal: 0, immersion: 0,
     lastActivity: null, lastTick: null, lastChatAnalysis: null,
     lastChatMessageId: null, lastBotMessageId: null, userStatus: 'active',
   },
@@ -71,7 +71,7 @@ async function step(minutes, note) {
     }
   }
   const st = await jiwen.getState();
-  rows.push({ at: fmt(VNOW), note: note || '', c: +st.connection.toFixed(3), p: +st.pride.toFixed(3), v: +st.valence.toFixed(3), a: +st.arousal.toFixed(3), i: +st.immersion.toFixed(3) });
+  rows.push({ at: fmt(VNOW), note: note || '', c: +st.connection.toFixed(3), p: +st.poise.toFixed(3), v: +st.valence.toFixed(3), a: +st.arousal.toFixed(3), i: +st.immersion.toFixed(3) });
 }
 
 (async () => {
@@ -108,9 +108,9 @@ async function step(minutes, note) {
 
   console.log('\n════════ 场景三：情绪 delta 迁移簇 ════════');
   const cases = [
-    { name: '她示弱 → 松/暖/静', delta: { pride: -0.20, valence: 0.10, arousal: -0.10 } },
-    { name: '她挑衅原则 → 冷/沉/起波', delta: { pride: 0.25, valence: -0.15, arousal: 0.15 } },
-    { name: '她撒娇 → 无波动', delta: { pride: 0.0, valence: 0.0, arousal: 0.0 } },
+    { name: '她示弱 → 松/暖/静', delta: { poise: -0.20, valence: 0.10, arousal: -0.10 } },
+    { name: '她挑衅原则 → 冷/沉/起波', delta: { poise: 0.25, valence: -0.15, arousal: 0.15 } },
+    { name: '她撒娇 → 无波动', delta: { poise: 0.0, valence: 0.0, arousal: 0.0 } },
   ];
   for (const c of cases) {
     await jiwen.applyDelta(c.delta);
@@ -118,12 +118,12 @@ async function step(minutes, note) {
     const block = bI(s, toneGrid);
     const styleLine = block.split('\n').slice(1).join(' ').slice(0, 70);
     console.log(`  ${c.name}`);
-    console.log(`    状态: p=${s.pride.toFixed(2)} v=${s.valence.toFixed(2)} a=${s.arousal.toFixed(2)}`);
+    console.log(`    状态: p=${s.poise.toFixed(2)} v=${s.valence.toFixed(2)} a=${s.arousal.toFixed(2)}`);
     console.log(`    注入: ${styleLine}…`);
   }
 
   console.log('\n════════ 场景四：主动唤醒通知原文 ════════');
-  await jiwen.applyDelta({ connection: 0.55, pride: 0.4 });
+  await jiwen.applyDelta({ connection: 0.55, poise: 0.4 });
   const sp = await jiwen.getState();
   console.log(bN(sp, toneGrid, { scene: 'contact' }, toneCfg.sceneOverride, toneCfg.proactiveOutlet));
 
@@ -133,4 +133,4 @@ async function step(minutes, note) {
   console.log('\n轨迹已写入 ' + out);
 })().catch((e) => { console.error('SIM CRASH', e); process.exit(1); });
 
-async function snap() { const s = await jiwen.getState(); return { c: +s.connection.toFixed(3), p: +s.pride.toFixed(3), v: +s.valence.toFixed(3), a: +s.arousal.toFixed(3), i: +s.immersion.toFixed(3) }; }
+async function snap() { const s = await jiwen.getState(); return { c: +s.connection.toFixed(3), p: +s.poise.toFixed(3), v: +s.valence.toFixed(3), a: +s.arousal.toFixed(3), i: +s.immersion.toFixed(3) }; }

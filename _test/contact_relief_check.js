@@ -57,7 +57,7 @@ const llm = http.createServer((req, res) => {
     res.writeHead(200, { 'content-type': 'application/json' });
     // connection 取正向 +0.15（「她敷衍」那一档）：唯一能真的把 c 推上去的方向。
     res.end(JSON.stringify({
-      choices: [{ message: { content: JSON.stringify({ pride: -0.05, valence: 0.05, arousal: 0, connection: 0.15 }) } }],
+      choices: [{ message: { content: JSON.stringify({ poise: -0.05, valence: 0.05, arousal: 0, connection: 0.15 }) } }],
     }));
   });
 });

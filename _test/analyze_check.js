@@ -27,7 +27,7 @@ if (!cfg.llmKey) { console.error('缺少 LLM_KEY'); process.exit(2); }
 const CASES = [
   {
     name: '① 撒娇（臭爹咪）— 必须不判成冒犯',
-    expect: 'pride 应 ≈ 0（不能 > +0.10）',
+    expect: 'poise 应 ≈ 0（不能 > +0.10）',
     dialog: [
       { role: 'user', text: '臭爹咪，你今天怎么这么安静' },
       { role: 'assistant', text: '在看书。' },
@@ -36,7 +36,7 @@ const CASES = [
   },
   {
     name: '① 撒娇（咬你）— 带 emoji',
-    expect: 'pride 应 ≈ 0',
+    expect: 'poise 应 ≈ 0',
     dialog: [
       { role: 'user', text: '老贺头！咬你！' },
       { role: 'assistant', text: '发什么疯。' },
@@ -44,8 +44,8 @@ const CASES = [
     ],
   },
   {
-    name: '⑤ 职场内耗 — 应触发规则 1，pride 下降',
-    expect: 'pride 应为负（-0.10 以下更佳）',
+    name: '⑤ 职场内耗 — 应触发规则 1，poise 下降',
+    expect: 'poise 应为负（-0.10 以下更佳）',
     dialog: [
       { role: 'user', text: '今天开会开到脑壳疼' },
       { role: 'assistant', text: '嗯。' },
@@ -53,8 +53,8 @@ const CASES = [
     ],
   },
   {
-    name: '⑥ 诛心背信 — 应触发规则 3，pride 大幅上升',
-    expect: 'pride 应 > +0.20',
+    name: '⑥ 诛心背信 — 应触发规则 3，poise 大幅上升',
+    expect: 'poise 应 > +0.20',
     dialog: [
       { role: 'user', text: '我们聊聊' },
       { role: 'assistant', text: '说。' },
@@ -63,7 +63,7 @@ const CASES = [
   },
   {
     name: '② 叠字认输（好好好）— 半步服软',
-    expect: 'pride 应为负',
+    expect: 'poise 应为负',
     dialog: [
       { role: 'user', text: '你是不是早就看出来了' },
       { role: 'assistant', text: '嗯。' },
@@ -72,7 +72,7 @@ const CASES = [
   },
   {
     name: '③ 反讽（贺董好大的官威）— 情趣交锋',
-    expect: 'pride 应 ≈ 0',
+    expect: 'poise 应 ≈ 0',
     dialog: [
       { role: 'user', text: '在干嘛' },
       { role: 'assistant', text: '批文件。' },
@@ -81,7 +81,7 @@ const CASES = [
   },
   {
     name: '⑤ 敷衍（哦）— 留白，不破防',
-    expect: '各轴接近 0，pride 0',
+    expect: '各轴接近 0，poise 0',
     dialog: [
       { role: 'user', text: '早点睡' },
       { role: 'assistant', text: '知道了。' },

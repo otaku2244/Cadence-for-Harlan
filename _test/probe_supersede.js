@@ -25,13 +25,13 @@ const COOLDOWN_MIN = 180;
 // 两次出现 → 两段静默 → param_scan 实测约 2 次 contact/天。
 // 第二段带情绪，用来把 arousal / valence 顶起来（自我调节闸门的唯一入口）。
 const CHAT_PLAN = [
-  { at: 8 * 60 + 30, turns: 3, delta: { pride: 0.05, valence: 0.10, arousal: 0.05 } },
-  { at: 20 * 60, turns: 6, delta: { pride: 0.10, valence: -0.30, arousal: 0.30 } },
+  { at: 8 * 60 + 30, turns: 3, delta: { poise: 0.05, valence: 0.10, arousal: 0.05 } },
+  { at: 20 * 60, turns: 6, delta: { poise: 0.10, valence: -0.30, arousal: 0.30 } },
 ];
 
 async function simulate(days, pollMin) {
   const state = {
-    connection: 0, pride: 0, valence: 0, arousal: 0, immersion: 0,
+    connection: 0, poise: 0, valence: 0, arousal: 0, immersion: 0,
     lastActivity: null, lastTick: null, lastChatAnalysis: null,
     lastChatMessageId: null, lastBotMessageId: null, userStatus: 'active',
   };
@@ -44,10 +44,10 @@ async function simulate(days, pollMin) {
     getPromptContext: () => '', getStyleGuidance: () => '',
     rates: {
       valenceSetpoint: -0.05, connectionAccel: 1.5, accelDelay: 30,
-      // ⚠️ 与桥保持一致（2026-10-07 起）。vendor 默认 prideDefendThreshold=1.0 是
+      // ⚠️ 与桥保持一致（2026-10-07 起）。vendor 默认 poiseDefendThreshold=1.0 是
       //    "永不"的哨兵值 → find_activity 永远不可达 → 本探针测不到混场景队列。
       //    桥打开骄傲防御后，find_activity 会在 contact 之前先触发，队列才有意义。
-      prideDefendThreshold: 0.20, prideDefendRate: 0.004,
+      poiseDefendThreshold: 0.20, poiseDefendRate: 0.004,
     },
     verbose: false, onLog: () => {},
   });

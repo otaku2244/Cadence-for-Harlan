@@ -3,9 +3,9 @@
 // 用法：node _test/valence_channel_check.js
 //
 // 背景：她整日不出现时，桥原先只能靠「嘴硬」通道触发 find_activity
-//   （c∈[0.35,0.50) 且 pride≥0.5）。实测 pride≥0.5 占醒着时间的 80%，
+//   （c∈[0.35,0.50) 且 poise≥0.5）。实测 poise≥0.5 占醒着时间的 80%，
 //   描述层第 2 段被钉死在同一档；且 c 涨得越快，「找你」(contact) 越容易
-//   抢在 pride 顶格之前触发 —— 冲浪反而变少。
+//   抢在 poise 顶格之前触发 —— 冲浪反而变少。
 //
 // 引擎里 find_activity 有第二条**互不相干**的入口（vendor/jiwen.js:507）：
 //   valence ≤ thresholds.valenceActivity 且 immersion < 0.3 → low_valence
@@ -27,7 +27,7 @@ function check(name, cond, detail) {
 }
 
 const NEUTRAL = {
-  connection: 0, pride: 0, valence: 0, arousal: 0, immersion: 0,
+  connection: 0, poise: 0, valence: 0, arousal: 0, immersion: 0,
   lastActivity: null, lastTick: null, lastChatAnalysis: null,
   lastChatMessageId: null, lastBotMessageId: null, userStatus: 'active',
 };

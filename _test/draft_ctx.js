@@ -31,7 +31,7 @@ const desc = createDescriber(cfg.describe);
 
 // ── 状态样本 ──
 const S = (c, p, v, a, imm, act) => ({
-  connection: c, pride: p, valence: v, arousal: a,
+  connection: c, poise: p, valence: v, arousal: a,
   immersion: imm == null ? 0 : imm,
   lastActivity: act || null,
 });
@@ -45,7 +45,7 @@ const SAMPLES = [
   ['找她 · c=0.42 p=0.15（过去被 contactOverride 顶掉的那一格）', 'contact', S(0.42, 0.15, 0.05, 0.05)],
   ['找她 · c=0.42 p=0.65（端着）', 'contact', S(0.42, 0.65, -0.05, 0.10)],
   ['找她 · c=0.62 强制线以上', 'contact', S(0.62, 0.05, 0.35, -0.40)],
-  ['独处 · pride_block', 'find_activity', S(0.42, 0.62, -0.05, 0.05), 'pride_block'],
+  ['独处 · poise_block', 'find_activity', S(0.42, 0.62, -0.05, 0.05), 'poise_block'],
   ['独处 · low_valence', 'find_activity', S(0.10, 0.20, -0.80, -0.50), 'low_valence'],
 ];
 
@@ -75,12 +75,12 @@ for (const it of cfg.describe.connection) {
 w('');
 w('> 此刻块（reactive）不出这一段：那块建块时 `connection` 恒为 0。');
 w('');
-w('### 段2 骄傲 → 表达方式（`pride`，6 档）');
+w('### 段2 骄傲 → 表达方式（`poise`，6 档）');
 w('');
-w('| pride | 文案 |');
+w('| poise | 文案 |');
 w('|---|---|');
 const PL = ['< 0.00', '[0.00, 0.10)', '[0.10, 0.30)', '[0.30, 0.50)', '[0.50, 0.80)', '≥ 0.80'];
-cfg.describe.pride.forEach((it, i) => w(`| ${PL[i]} | ${it.text} |`));
+cfg.describe.poise.forEach((it, i) => w(`| ${PL[i]} | ${it.text} |`));
 w('');
 w('> 作者原版是 5 档，这里在最上头多切了一刀（`≤ 0.00` 单独成档）。');
 w('');
@@ -119,7 +119,7 @@ w('');
 for (const [name, scene, st, reason] of SAMPLES) {
   w(`### ${name}`);
   w('');
-  w(`坐标：c=${st.connection.toFixed(2)} p=${st.pride.toFixed(2)} v=${st.valence.toFixed(2)} a=${st.arousal.toFixed(2)} imm=${st.immersion.toFixed(2)}`);
+  w(`坐标：c=${st.connection.toFixed(2)} p=${st.poise.toFixed(2)} v=${st.valence.toFixed(2)} a=${st.arousal.toFixed(2)} imm=${st.immersion.toFixed(2)}`);
   w('');
   w('```');
   if (scene === 'reactive') w(buildInjectionBlock(st, grid, desc));

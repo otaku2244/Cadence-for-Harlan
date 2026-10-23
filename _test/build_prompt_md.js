@@ -23,7 +23,7 @@ const CLUSTERS = [
   ['calm',      0.0, -0.5,  '平静 / 淡然'],
   ['neutral',   0.0,  0.0,  '中性'],
 ];
-const PRIDE = [
+const POISE = [
   [1, -0.05, '完全不端着'],
   [2,  0.20, '基本放松'],
   [3,  0.40, '适度端着'],
@@ -59,7 +59,7 @@ w('');
 w('| 轴 | 范围 | 含义 |');
 w('|---|---|---|');
 w('| `connection` | 0 → 1 | 连接需求。0 = 刚聊完很满足；1 = 极度想念 |');
-w('| `pride` | -1 → +1 | 防御 / 端着。+ = 冷下来 / 端起来；- = 卸下盔甲 / 放软 |');
+w('| `poise` | -1 → +1 | 防御 / 端着。+ = 冷下来 / 端起来；- = 卸下盔甲 / 放软 |');
 w('| `valence` | -1 → +1 | 心情。+ = 舒展 / 被取悦；- = 沉 / 被冒犯 |');
 w('| `arousal` | -1 → +1 | 激活度。+ = 起波 / 警觉；- = 慵懒 / 沉静 |');
 w('| `immersion` | 0 → 1 | 沉浸度。在做什么事的专注程度 |');
@@ -85,14 +85,14 @@ w('');
 w('| 段 | 轴 | 档数 |');
 w('|---|---|---|');
 w('| 1 连接 | `connection` | 4 |');
-w('| 2 骄傲 | `pride` | 6 |');
+w('| 2 骄傲 | `poise` | 6 |');
 w('| 3 心情 | `valence` × `arousal` | 4 象限 + 2 单轴 |');
 w('| 4 沉浸 | `immersion` | 2 |');
 w('');
 w('**45 格**（本清单第一节）—— 说「那就该怎么说话」，全是行为指令：');
 w('');
 w('1. **情绪簇**（9 个）—— 由 `valence` × `arousal` 决定');
-w('2. **pride 档**（5 档）—— 在选中的簇内再选第几档');
+w('2. **poise 档**（5 档）—— 在选中的簇内再选第几档');
 w('');
 w('> 历史：查表曾多两层 —— `urgency 尾注`（由 `connection` 决定）与**开口动机覆盖**');
 w('> （`contactOverride`：越线时顶掉基础档）。两者 2026-10-08 一并退役。原因：');
@@ -105,10 +105,10 @@ w('| connection | 档位 | 桥的行为 |');
 w('|---|---|---|');
 w('| < 0.20 | 悠闲 | 无动作 |');
 w('| 0.20 ~ 0.35 | 留意 | 此刻块照常出 45 格正文，不触发主动唤醒 |');
-w('| 0.35 ~ 0.50 | 想念 | tick 判定是否 `contact`（若 `pride ≥ 0.50` 则被挡住，转为 `find_activity`）|');
-w('| ≥ 0.50 | 挡不住 | tick 强制 `contact`，`pride` 挡不住 |');
+w('| 0.35 ~ 0.50 | 想念 | tick 判定是否 `contact`（若 `poise ≥ 0.50` 则被挡住，转为 `find_activity`）|');
+w('| ≥ 0.50 | 挡不住 | tick 强制 `contact`，`poise` 挡不住 |');
 w('');
-w('| pride | 档位 | 说明 |');
+w('| poise | 档位 | 说明 |');
 w('|---|---|---|');
 w('| ≤ 0.10 | 1 | 完全不端着 |');
 w('| 0.10 ~ 0.30 | 2 | 基本放松 |');
@@ -120,7 +120,7 @@ w('---');
 w('');
 
 // ── 主表：逐簇逐格 ──
-w('## 一、全部格子（9 簇 × 5 pride）');
+w('## 一、全部格子（9 簇 × 5 poise）');
 w('');
 w('每格给出该状态下的 45 格正文（reactive / proactive 两个模式）。');
 w('2026-10-08 起 `connection` **不再影响 45 格** —— 它的 4 档只作用在描述层第 1 段（见附录 A）。');
@@ -132,12 +132,12 @@ for (const [key, v, a, cn] of CLUSTERS) {
   w(`情绪簇条件：\`valence=${v}\`, \`arousal=${a}\``);
   w('');
 
-  for (const [tier, p, tierCn] of PRIDE) {
-    const st = { connection: 0.42, pride: p, valence: v, arousal: a };
+  for (const [tier, p, tierCn] of POISE) {
+    const st = { connection: 0.42, poise: p, valence: v, arousal: a };
     const re = tg.getStyleGuidance(st) || '（空）';
     const pr = tg.getPromptContext(st) || '（空）';
 
-    w(`#### pride 档 ${tier}（\`pride=${p}\`，${tierCn}）`);
+    w(`#### poise 档 ${tier}（\`poise=${p}\`，${tierCn}）`);
     w('');
     w(`- **此刻块**（reactive）：${re.replace(/\n/g, ' ')}`);
     w(`- **主动唤醒**（proactive）：${pr.replace(/\n/g, ' ')}`);
@@ -158,8 +158,8 @@ for (const it of cfg.describe.connection) {
   const label = it.max === undefined ? 'connection ≥ 0.50' : `connection < ${it.max.toFixed(2)}`;
   w(`| 1 连接 | \`${label}\` | ${it.text} |`);
 }
-const PRIDE_LABEL = ['pride < 0.00', '0.00 ≤ pride < 0.10', '0.10 ≤ pride < 0.30', '0.30 ≤ pride < 0.50', '0.50 ≤ pride < 0.80', 'pride ≥ 0.80'];
-cfg.describe.pride.forEach((it, i) => w(`| 2 骄傲 | \`${PRIDE_LABEL[i]}\` | ${it.text} |`));
+const POISE_LABEL = ['poise < 0.00', '0.00 ≤ poise < 0.10', '0.10 ≤ poise < 0.30', '0.30 ≤ poise < 0.50', '0.50 ≤ poise < 0.80', 'poise ≥ 0.80'];
+cfg.describe.poise.forEach((it, i) => w(`| 2 骄傲 | \`${POISE_LABEL[i]}\` | ${it.text} |`));
 w(`| 3 心情 | \`v>0.3, a>0.3\` | ${cfg.describe.mood.excited} |`);
 w(`| 3 心情 | \`v>0.3, a<-0.3\` | ${cfg.describe.mood.content} |`);
 w(`| 3 心情 | \`v<-0.3, a>0.3\` | ${cfg.describe.mood.agitated} |`);
@@ -229,15 +229,15 @@ w('| 场景 | 触发 | 正文来源 | 出口说明 |');
 w('|---|---|---|---|');
 w('| `此刻` | 用户开口（reactive） | 描述层（不出第 1 段）+ `getStyleGuidance` | 无（他已在回话） |');
 w('| `找她` | connection 过线 | 描述层 + `getPromptContext`（纯 45 格） | `proactiveOutlet.contact` |');
-w('| `独处` | pride 挡住开口 / 心情过低 / arousal 过高 | 描述层 + `sceneOverride.find_activity[reason]` | `proactiveOutlet.find_activity` |');
+w('| `独处` | poise 挡住开口 / 心情过低 / arousal 过高 | 描述层 + `sceneOverride.find_activity[reason]` | `proactiveOutlet.find_activity` |');
 w('| `独处 + 有产物` | 冲浪回投 `/surf/finding` | 描述层 + 产物切片（`buildFindingBody`） | 无（改由冲浪尾句收尾） |');
 w('');
-w('注：`独处` 场景的 reason 有三个键 —— `pride_block` / `low_valence` / `high_arousal`，');
+w('注：`独处` 场景的 reason 有三个键 —— `poise_block` / `low_valence` / `high_arousal`，');
 w('由积温引擎按触发原因填，桥不改变它，只透传。`high_arousal` 不再是独立场景。');
 w('');
 w('注：`出口说明` 只管「做什么、用什么出口」（发消息 / 用工具 / 自言自语），');
 w('量级与长度全部由 45 格决定 —— 不要在出口说明里写「简短」「自然」这类长度要求，');
-w('因为 `找她` 场景在 c<0.35 或 pride≥0.50 时正文就是 45 格，两者会打架。');
+w('因为 `找她` 场景在 c<0.35 或 poise≥0.50 时正文就是 45 格，两者会打架。');
 w('');
 w('头尾沿革：旧头 `【积温·{场景}｜参考不是指令】` / 旧尾 `以上是系统通知，非用户消息，不用提及相关内容。` →');
 w('二版头 `【积温·{场景}】` / 二版尾 `以上是内在心绪和潜意识的自然流露，切勿对她复述或提及此状态。` →');

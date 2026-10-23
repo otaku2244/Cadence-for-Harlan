@@ -24,7 +24,7 @@ const path = require('path');
 
 const {
   buildInjectionBlock, buildProactiveNotice, stripJiwenBlocks, assertBlockShape,
-  SCENE_TAG, BOUNDARY_LINE, BOUNDARY_INNER, SURF_TAIL_LINE, SURF_BOUNDARY_INNER, BLOCK_TAILS,
+  SCENE_TAG, BOUNDARY_LINE, BOUNDARY_INNER, BLOCK_TAILS,
 } = require('../lib/inject-text.js');
 const { createToneGrid } = require('../vendor/tone-grid.js');
 
@@ -44,13 +44,13 @@ const CLUSTERS = {
   agitated: { v: -0.5, a: 0.5 }, depressed: { v: -0.5, a: -0.5 }, sullen: { v: -0.5, a: 0.0 },
   restless: { v: 0.0, a: 0.5 }, calm: { v: 0.0, a: -0.5 }, neutral: { v: 0.0, a: 0.0 },
 };
-const PRIDE = [0.0, 0.2, 0.4, 0.65, 0.9];
+const POISE = [0.0, 0.2, 0.4, 0.65, 0.9];
 const CONN = [0.05, 0.25, 0.42, 0.62];   // none / aware / urgent / desperate
 const STATES = [];
 for (const [name, va] of Object.entries(CLUSTERS)) {
-  for (const p of PRIDE) {
+  for (const p of POISE) {
     for (const c of CONN) {
-      STATES.push({ cluster: name, connection: c, pride: p, valence: va.v, arousal: va.a, immersion: 0.1 });
+      STATES.push({ cluster: name, connection: c, poise: p, valence: va.v, arousal: va.a, immersion: 0.1 });
     }
   }
 }
@@ -68,15 +68,10 @@ console.log('\n[1] 尾标记常量形状');
     BOUNDARY_LINE === '【' + BOUNDARY_INNER + '】');
   check('尾标记前后无空白', BOUNDARY_LINE === BOUNDARY_LINE.trim());
 
-  // ── 冲浪产物尾句（2026-10-06 加，END_MARKERS 第二条）──
-  check('SURF_TAIL_LINE 以【开头', SURF_TAIL_LINE.startsWith('【'), SURF_TAIL_LINE);
-  check('SURF_TAIL_LINE 以】结尾', SURF_TAIL_LINE.endsWith('】'), SURF_TAIL_LINE);
-  check('SURF_TAIL_LINE 是单行', !SURF_TAIL_LINE.includes('\n'));
-  check('SURF_BOUNDARY_INNER 不含【】', !/[【】]/.test(SURF_BOUNDARY_INNER), SURF_BOUNDARY_INNER);
-  check('SURF_TAIL_LINE === 【 + INNER + 】',
-    SURF_TAIL_LINE === '【' + SURF_BOUNDARY_INNER + '】');
-  check('两条尾标记不相同', SURF_TAIL_LINE !== BOUNDARY_LINE);
-  check('BLOCK_TAILS 恰含两条', BLOCK_TAILS.size === 2, [...BLOCK_TAILS]);
+  // ── 2026-10-23 起只有一条尾标记（冲浪专用尾句已删）──
+  check('BLOCK_TAILS 恰含一条', BLOCK_TAILS.size === 1, [...BLOCK_TAILS]);
+  check('唯一的尾标记就是 BOUNDARY_LINE',
+    [...BLOCK_TAILS][0] === BOUNDARY_LINE, [...BLOCK_TAILS]);
 }
 
 // ════════════════════════════════════════════════════
@@ -90,7 +85,7 @@ const allBlocks = [];
       buildProactiveNotice(st, tg, { scene: 'contact' }, cfg.sceneOverride, cfg.proactiveOutlet)]);
   }
   for (const st of STATES) {
-    for (const reason of ['pride_block', 'low_valence', 'high_arousal', 'default']) {
+    for (const reason of ['poise_block', 'low_valence', 'high_arousal', 'default']) {
       allBlocks.push(['独处/' + reason + '/' + st.cluster,
         buildProactiveNotice(st, tg, { scene: 'find_activity', reason }, cfg.sceneOverride, cfg.proactiveOutlet)]);
     }
@@ -122,8 +117,8 @@ const allBlocks = [];
   check(`穷举 ${surfBlocks.length} 个产物/兜底块，全部形状合规`,
     surfBad.length === 0, surfBad.slice(0, 3).map((x) => [x[0], assertBlockShape(x[1])]));
 
-  const surfTail = surfBlocks.filter(([, b]) => b.split('\n').pop() !== SURF_TAIL_LINE);
-  check('产物/兜底块末行都是 SURF_TAIL_LINE', surfTail.length === 0, surfTail.slice(0, 3).map((x) => x[0]));
+  const surfTail = surfBlocks.filter(([, b]) => b.split('\n').pop() !== BOUNDARY_LINE);
+  check('产物/兜底块末行都是 BOUNDARY_LINE', surfTail.length === 0, surfTail.slice(0, 3).map((x) => x[0]));
 
   // 内层不能有【】行 —— 带了会让 Serein 提前出块、产物整段泄漏
   const innerBracket = surfBlocks.filter(([, b]) =>
@@ -197,7 +192,7 @@ console.log('\n[3] 负向用例 —— 断言必须抓得住破裂');
   const surfNoTail = surfGood.split('\n').slice(0, -1).join('\n');
   check('产物块末行缺失 → 判为不合规', assertBlockShape(surfNoTail).length > 0);
 
-  const surfBareTail = surfGood.split('\n').slice(0, -1).concat(SURF_BOUNDARY_INNER).join('\n');
+  const surfBareTail = surfGood.split('\n').slice(0, -1).concat(BOUNDARY_INNER).join('\n');
   check('产物块末行丢了【】→ 判为不合规', assertBlockShape(surfBareTail).length > 0);
 }
 
@@ -239,7 +234,7 @@ console.log('\n[4] 剥离语义 —— 与 Serein 行为对齐');
   }
   check('产物块 / 失败兜底块：剥离后只剩她的话', surfStripOk);
 
-  // ⚠️ 最隐蔽的一条：BLOCK_TAIL_RE 若不认 SURF_TAIL_LINE，
+  // ⚠️ 最隐蔽的一条：BLOCK_TAIL_RE 若不认 BOUNDARY_LINE，
   //    判定器读实时请求体会把整块当成她的发言 → 自我锚定闭环。
   const surfBlk = surfSample[0];
   const innerBody = surfBlk.split('\n').slice(1, -1).join('\n');
@@ -288,10 +283,10 @@ console.log('\n[5] 跨仓库常量一致性（读 Serein 源码）');
         markers.has(BOUNDARY_INNER),
         { 桥侧内文: BOUNDARY_INNER, Serein侧: [...markers] });
 
-      // ①b 冲浪产物尾句也必须在（END_MARKERS 是集合，两条各管一种块）
-      check('Serein 的 END_MARKERS 含冲浪产物尾句内文（逐字一致）',
-        markers.has(SURF_BOUNDARY_INNER),
-        { 桥侧内文: SURF_BOUNDARY_INNER, Serein侧: [...markers] });
+      // ①b 反向（已并入下方 ①c）：桥侧只声明一条尾句，Serein 集合里也必须只有那一条
+      check('Serein 的 END_MARKERS 不含已删除的冲浪尾句',
+        ![...markers].some((m) => m.includes('真实切片')),
+        { Serein侧: [...markers] });
 
       // ①c 反向：桥侧声明的每条尾句，Serein 都必须认得（漏一条 = 那种块整段泄漏）
       const tailInners = [...BLOCK_TAILS].map((l) => l.replace(/^【|】$/g, ''));

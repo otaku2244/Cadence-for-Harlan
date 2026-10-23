@@ -3,3 +3,8 @@ node_modules/
 data/
 _test/.run*/
 *.log
+
+# 本机备份副本与探针临时件（不入库）
+*.bak
+*.bak-*
+*.probe*

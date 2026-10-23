@@ -3,7 +3,7 @@
 // 闭环模拟 —— 真实判定器 + 整日推进 + 7 天语料
 //
 // 目的（对应作者提示的三个观察点）：
-//   1. pride 是否只涨不跌 / 是否总在 0
+//   1. poise 是否只涨不跌 / 是否总在 0
 //   2. force_contact 触发频率
 //   3. valence / arousal 波动幅度
 //
@@ -70,7 +70,7 @@ const jiwen = createJiwen({
   connectionRateFn: () => parseFloat(process.env.CONNECTION_RATE || '0.0007'),
   onSave: async (s) => { store = JSON.parse(JSON.stringify(s)); },
   onLoad: async () => store || {
-    connection: 0, pride: 0, valence: 0, arousal: 0, immersion: 0,
+    connection: 0, poise: 0, valence: 0, arousal: 0, immersion: 0,
     lastActivity: null, lastTick: null, lastChatAnalysis: null,
     lastChatMessageId: null, lastBotMessageId: null, userStatus: 'active',
   },
@@ -163,13 +163,13 @@ const SCRIPT = [
 
 // ── OFFLINE 替身：按 kind 直接给 delta（仅用于快速验证骨架，会失真）──
 const OFFLINE_DELTA = {
-  rule1: { pride: -0.20, valence: 0.10, arousal: -0.10, connection: -0.20 },
-  rule2: { pride: 0.15,  valence: -0.10, arousal: 0.10, connection: 0 },
-  rule3: { pride: 0.28,  valence: -0.25, arousal: 0.20, connection: 0 },
-  rule4: { pride: -0.10, valence: 0.08, arousal: -0.08, connection: -0.15 },
-  rule5: { pride: 0.0,   valence: 0.03, arousal: -0.02, connection: 0 },
-  rule6: { pride: 0.0,   valence: 0.0,  arousal: 0.0,  connection: 0 },
-  rule8: { pride: 0.0,   valence: 0.0,  arousal: 0.0,  connection: 0 },
+  rule1: { poise: -0.20, valence: 0.10, arousal: -0.10, connection: -0.20 },
+  rule2: { poise: 0.15,  valence: -0.10, arousal: 0.10, connection: 0 },
+  rule3: { poise: 0.28,  valence: -0.25, arousal: 0.20, connection: 0 },
+  rule4: { poise: -0.10, valence: 0.08, arousal: -0.08, connection: -0.15 },
+  rule5: { poise: 0.0,   valence: 0.03, arousal: -0.02, connection: 0 },
+  rule6: { poise: 0.0,   valence: 0.0,  arousal: 0.0,  connection: 0 },
+  rule8: { poise: 0.0,   valence: 0.0,  arousal: 0.0,  connection: 0 },
 };
 
 // ── 工具 ──
@@ -189,7 +189,7 @@ function snapshot(kind, label, extra) {
     kind,
     label,
     c: +(s.connection || 0).toFixed(3),
-    p: +(s.pride || 0).toFixed(3),
+    p: +(s.poise || 0).toFixed(3),
     v: +(s.valence || 0).toFixed(3),
     a: +(s.arousal || 0).toFixed(3),
     i: +(s.immersion || 0).toFixed(3),
@@ -261,19 +261,19 @@ const t0 = VNOW;
 
     // 5. 记录
     const s = store;
-    const tier = s.pride > 0.8 ? 5 : s.pride > 0.5 ? 4 : s.pride > 0.3 ? 3 : s.pride > 0.1 ? 2 : 1;
+    const tier = s.poise > 0.8 ? 5 : s.poise > 0.5 ? 4 : s.poise > 0.3 ? 3 : s.poise > 0.1 ? 2 : 1;
     const urgency = s.connection >= 0.5 ? 'desperate' : s.connection >= 0.35 ? 'urgent' : s.connection >= 0.2 ? 'aware' : 'none';
     snapshot(ev.kind, ev.label, {
       peak_c: peakConn,
-      d_p: delta ? +delta.pride.toFixed(3) : '',
+      d_p: delta ? +delta.poise.toFixed(3) : '',
       d_v: delta ? +delta.valence.toFixed(3) : '',
       d_a: delta ? +delta.arousal.toFixed(3) : '',
       d_c: delta ? +delta.connection.toFixed(3) : '',
       tier, urgency,
     });
-    const dstr = delta ? `Δp=${delta.pride >= 0 ? '+' : ''}${delta.pride.toFixed(2)} Δv=${delta.valence >= 0 ? '+' : ''}${delta.valence.toFixed(2)} Δa=${delta.arousal >= 0 ? '+' : ''}${delta.arousal.toFixed(2)} Δc=${delta.connection >= 0 ? '+' : ''}${delta.connection.toFixed(2)}` : '(无)';
+    const dstr = delta ? `Δp=${delta.poise >= 0 ? '+' : ''}${delta.poise.toFixed(2)} Δv=${delta.valence >= 0 ? '+' : ''}${delta.valence.toFixed(2)} Δa=${delta.arousal >= 0 ? '+' : ''}${delta.arousal.toFixed(2)} Δc=${delta.connection >= 0 ? '+' : ''}${delta.connection.toFixed(2)}` : '(无)';
     console.log(`D${ev.day} ${String(ev.hour).padStart(2, '0')}:00  ${ev.label.padEnd(12, '　')}  ${dstr}`);
-    console.log(`         →  c=${s.connection.toFixed(2)} p=${s.pride.toFixed(2)} v=${s.valence.toFixed(2)} a=${s.arousal.toFixed(2)}  [pride档${tier} / ${urgency}]`);
+    console.log(`         →  c=${s.connection.toFixed(2)} p=${s.poise.toFixed(2)} v=${s.valence.toFixed(2)} a=${s.arousal.toFixed(2)}  [poise档${tier} / ${urgency}]`);
   }
 
   // ── 汇总 ──
@@ -289,7 +289,7 @@ const t0 = VNOW;
     const avg = arr.reduce((a, b) => a + b, 0) / arr.length;
     return { min: +min.toFixed(3), max: +max.toFixed(3), avg: +avg.toFixed(3), range: +(max - min).toFixed(3) };
   };
-  console.log(`pride     min=${stat(ps).min} max=${stat(ps).max} avg=${stat(ps).avg} 波动=${stat(ps).range}`);
+  console.log(`poise     min=${stat(ps).min} max=${stat(ps).max} avg=${stat(ps).avg} 波动=${stat(ps).range}`);
   console.log(`valence   min=${stat(vs).min} max=${stat(vs).max} avg=${stat(vs).avg} 波动=${stat(vs).range}`);
   console.log(`arousal   min=${stat(as).min} max=${stat(as).max} avg=${stat(as).avg} 波动=${stat(as).range}`);
 
@@ -312,12 +312,12 @@ const t0 = VNOW;
   console.log('作者三个观察点 · 专项判定');
   console.log('─'.repeat(64));
 
-  // 观察点 1：pride 是否只涨不跌 / 是否总在 0
+  // 观察点 1：poise 是否只涨不跌 / 是否总在 0
   const up = rows.filter((r) => r.d_p !== '' && r.d_p > 0.03).length;
   const down = rows.filter((r) => r.d_p !== '' && r.d_p < -0.03).length;
   const flat = rows.filter((r) => r.d_p !== '' && Math.abs(r.d_p) <= 0.03).length;
   const finalP = rows[rows.length - 1].p;
-  console.log(`[1] pride 漂移方向：升 ${up} 次 / 降 ${down} 次 / 平 ${flat} 次`);
+  console.log(`[1] poise 漂移方向：升 ${up} 次 / 降 ${down} 次 / 平 ${flat} 次`);
   console.log(`    终值 p=${finalP}，轨迹波动 ${stat(ps).range}`);
   console.log(`    → ${Math.abs(finalP) < 0.15 ? '未卡死（健康）' : '终值偏离 0 较多，需关注'}`);
 
@@ -333,7 +333,7 @@ const t0 = VNOW;
   // 落盘 CSV
   const dir = path.join(__dirname, '.run');
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  const header = 'day,time,kind,label,peak_connection,connection,pride,valence,arousal,immersion,d_pride,d_valence,d_arousal,d_connection,tier,urgency';
+  const header = 'day,time,kind,label,peak_connection,connection,poise,valence,arousal,immersion,d_poise,d_valence,d_arousal,d_connection,tier,urgency';
   const csv = [header, ...rows.map((r) =>
     [r.day, r.time, r.kind, r.label, r.peak_c, r.c, r.p, r.v, r.a, r.i, r.d_p, r.d_v, r.d_a, r.d_c, r.tier, r.urgency].join(',')
   )].join('\n');

@@ -32,7 +32,7 @@ const PS = [-1, -0.5, -0.1, 0, 0.05, 0.2, 0.4, 0.65, 0.9];
 const CS = [0, 0.1, 0.25, 0.36, 0.5, 0.7];
 
 const st = (v, a, p, c, imm, act) => ({
-  valence: v, arousal: a, pride: p, connection: c,
+  valence: v, arousal: a, poise: p, connection: c,
   immersion: imm == null ? 0 : imm,
   lastActivity: act || null,
 });
@@ -76,7 +76,7 @@ hr('[2] 45 格是否完整到达模型（覆盖层退役后的回归）');
   }
   const a1 = grid.getStyleGuidance(st(0.45, 0, 0.2, 0.1));
   const a2 = grid.getStyleGuidance(st(0.45, 0, 0.2, 0.7));
-  console.log(`  穷举 ${n} 组（V×A×pride×c）：`);
+  console.log(`  穷举 ${n} 组（V×A×poise×c）：`);
   console.log(`    · 不同的正文只有 ${distinct.size} 种（理论值 9 簇 × 5 档 = 45，受枚举粒度限制）`);
   console.log(`    · 以簇名开头的 ${clusterHead}/${n} 组（${(clusterHead / n * 100).toFixed(0)}%）`);
   console.log(`    · 正文是否随 connection 变化：${a1 === a2 ? '否（connection 已不进 45 格）' : '是'}`);
@@ -107,7 +107,7 @@ hr('[4] 档位行 —— 已于 2026-10-08 整条删除（本项不再统计）'
 {
   // 删除依据（原分析留档，已在 `_test/state_lines_probe.txt` / `compare_state_lines.txt`）：
   //   · 「想念」与字段名同字 → 渲染成 `想念：想念。`（重字）
-  //   · 四条各自 ≈ 45 格的某一维，属同义重复：心情←簇 / 姿态←pride 档 / 心跳←簇内 arousal
+  //   · 四条各自 ≈ 45 格的某一维，属同义重复：心情←簇 / 姿态←poise 档 / 心跳←簇内 arousal
   //   · 「悠闲」死档：进 `想念：` 行要 `c ≥ 0.20`，而「悠闲」区间是 `c < 0.20`，永不可达
   //   · 此刻块 c 恒 0 → `想念：` 行此刻块里根本不出现（通知里才有）
   // 现在块内只剩「块头 / 描述层 / 正文 / 尾标记」。
@@ -127,12 +127,12 @@ hr('[5] 实际渲染：此刻块 / 唤醒块（含描述层）');
     buildInjectionBlock(state, grid, desc).split('\n').forEach((l) => console.log('    ' + l));
     console.log('');
   }
-  console.log('  【唤醒块 · contact（c=0.42，pride=0.15）】');
+  console.log('  【唤醒块 · contact（c=0.42，poise=0.15）】');
   buildProactiveNotice(st(0.30, 0, 0.15, 0.42), grid, { scene: 'contact' }, cfg.sceneOverride, cfg.proactiveOutlet, desc)
     .split('\n').forEach((l) => console.log('    ' + l));
   console.log('');
-  console.log('  【唤醒块 · find_activity（pride_block）】');
-  buildProactiveNotice(st(-0.10, -0.20, 0.70, 0.20), grid, { scene: 'find_activity', reason: 'pride_block' }, cfg.sceneOverride, cfg.proactiveOutlet, desc)
+  console.log('  【唤醒块 · find_activity（poise_block）】');
+  buildProactiveNotice(st(-0.10, -0.20, 0.70, 0.20), grid, { scene: 'find_activity', reason: 'poise_block' }, cfg.sceneOverride, cfg.proactiveOutlet, desc)
     .split('\n').forEach((l) => console.log('    ' + l));
 }
 
@@ -142,20 +142,20 @@ hr('[6] 作者四段描述层 —— 逐段可达性');
 {
   const R = cfg.describe;
   const connAll = new Set(R.connection.map((x) => x.text));
-  const prideAll = new Set(R.pride.map((x) => x.text));
+  const poiseAll = new Set(R.poise.map((x) => x.text));
   const moodAll = new Set(Object.values(R.mood));
 
-  const seenConn = new Set(), seenPride = new Set(), seenMood = new Set();
+  const seenConn = new Set(), seenPoise = new Set(), seenMood = new Set();
   for (const v of VS) for (const a of AS) for (const p of PS) for (const c of CS) {
     for (const l of desc(st(v, a, p, c))) {
       if (connAll.has(l)) seenConn.add(l);
-      else if (prideAll.has(l)) seenPride.add(l);
+      else if (poiseAll.has(l)) seenPoise.add(l);
       else if (moodAll.has(l)) seenMood.add(l);
     }
   }
   const miss = (all, seen) => [...all].filter((x) => !seen.has(x)).length;
   console.log(`  ① 段1 连接（作者 defaultPromptContext 第 1 段）  可达 ${seenConn.size}/${connAll.size}，缺 ${miss(connAll, seenConn)}`);
-  console.log(`  ② 段2 骄傲（作者第 2 段）                        可达 ${seenPride.size}/${prideAll.size}，缺 ${miss(prideAll, seenPride)}`);
+  console.log(`  ② 段2 骄傲（作者第 2 段）                        可达 ${seenPoise.size}/${poiseAll.size}，缺 ${miss(poiseAll, seenPoise)}`);
   console.log(`  ③ 段3 心情（作者第 3 段 V×A）                    可达 ${seenMood.size}/${moodAll.size}，缺 ${miss(moodAll, seenMood)}`);
 
   // 段4 不吃 v/a/p/c 的穷举（它只读 immersion + lastActivity），单独测三档。

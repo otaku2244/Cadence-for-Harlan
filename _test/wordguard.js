@@ -15,7 +15,7 @@ const path = require('path');
 const cfg = require(path.join(__dirname, '../config/tone-harlan.json'));
 
 // ── 三类词表 ──
-const TERMS = /底色|参与度|投入度|展开度|主动性|压制程度|阈值|量级|簇|valence|arousal|pride|connection/;
+const TERMS = /底色|参与度|投入度|展开度|主动性|压制程度|阈值|量级|簇|valence|arousal|poise|connection/;
 const BODY = /脸|嘴角|眉|眼神|抬眼|手上|掌心|掌|指|肩|背|胸|呼吸|嘴|牙|喉|咽|叹|笑|点头|摇头|皱眉|心跳|绷/;
 const SPACE = /回来|回去|去了哪|去哪儿|距离|拉近|推远|递|那边|那儿|在场|不在|出现|门口|进门|进门|开门|关门|靠近|凑过|挪|飘/;
 const COLLOQ = /闷|静不下来|不爽|憋着|温吞|嘴严|坐立不安/;

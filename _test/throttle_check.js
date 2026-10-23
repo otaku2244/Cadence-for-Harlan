@@ -3,7 +3,7 @@
 // 用法：node _test/throttle_check.js
 //
 // 背景：旧实现比较 block 字符串，而块文本是**离散格**
-//       （v=0.31 与 v=0.60 落在同一簇同一 pride 档 → 正文逐字相同），
+//       （v=0.31 与 v=0.60 落在同一簇同一 poise 档 → 正文逐字相同），
 //       导致 30 分钟窗口内状态漂移但注入被静默跳过。
 
 const path = require('path');
@@ -30,7 +30,7 @@ let lastInjectAt = 0;
 function shouldInject(block, state) {
   const now = Date.now();
   const sig = state
-    ? [state.connection, state.pride, state.valence, state.arousal, state.immersion]
+    ? [state.connection, state.poise, state.valence, state.arousal, state.immersion]
         .map((x) => (Number(x) || 0).toFixed(2)).join(',')
     : block;
   const changed = sig !== lastInjectSig;
@@ -48,32 +48,32 @@ const ACT = { type: 'search', label: '上网冲浪', at: new Date().toISOString(
 const CASES = [
   {
     name: '① 首轮 → 必注',
-    st: { connection: 0, pride: 0, valence: 0, arousal: 0, immersion: 0 },
+    st: { connection: 0, poise: 0, valence: 0, arousal: 0, immersion: 0 },
     want: true,
   },
   {
     name: '② 文本相同、valence 0 → -0.03 → 必须重注（旧逻辑会漏）',
-    st: { connection: 0, pride: 0, valence: -0.03, arousal: 0, immersion: 0 },
+    st: { connection: 0, poise: 0, valence: -0.03, arousal: 0, immersion: 0 },
     want: true,
   },
   {
     name: '③ 完全没动 → 不注',
-    st: { connection: 0, pride: 0, valence: -0.03, arousal: 0, immersion: 0 },
+    st: { connection: 0, poise: 0, valence: -0.03, arousal: 0, immersion: 0 },
     want: false,
   },
   {
     name: '④ arousal 0 → 0.02 → 重注',
-    st: { connection: 0, pride: 0, valence: -0.03, arousal: 0.02, immersion: 0 },
+    st: { connection: 0, poise: 0, valence: -0.03, arousal: 0.02, immersion: 0 },
     want: true,
   },
   {
     name: '⑤ 只在小数点后第三位动 → 2 位精度下视为没变 → 不注',
-    st: { connection: 0, pride: 0, valence: -0.031, arousal: 0.02, immersion: 0 },
+    st: { connection: 0, poise: 0, valence: -0.031, arousal: 0.02, immersion: 0 },
     want: false,
   },
   {
     name: '⑥ 只有 immersion 动（冲浪跑完 0 → 0.40）→ 必须重注（段4 变了）',
-    st: { connection: 0, pride: 0, valence: -0.031, arousal: 0.02, immersion: 0.4, lastActivity: ACT },
+    st: { connection: 0, poise: 0, valence: -0.031, arousal: 0.02, immersion: 0.4, lastActivity: ACT },
     want: true,
   },
 ];
@@ -92,14 +92,14 @@ for (const c of CASES) {
 console.log(`\n${pass}/${CASES.length} 通过`);
 
 // 附：渲染文本是否真的相同（证明问题根因）
-const bA = bI({ connection: 0, pride: 0, valence: 0, arousal: 0, immersion: 0 }, toneGrid);
-const bB = bI({ connection: 0, pride: 0, valence: -0.03, arousal: 0, immersion: 0 }, toneGrid);
+const bA = bI({ connection: 0, poise: 0, valence: 0, arousal: 0, immersion: 0 }, toneGrid);
+const bB = bI({ connection: 0, poise: 0, valence: -0.03, arousal: 0, immersion: 0 }, toneGrid);
 console.log(`\n根因佐证：valence 0 与 -0.03 的渲染块是否逐字相同 = ${bA === bB}`);
 console.log('（为 true 即说明旧逻辑必然漏注，而新逻辑靠数值签名拦住了它）');
 
 // 附：immersion 单独变化 —— 四轴签名不动，只有块文本变，只能靠 immersion 在签名里拦住
-const sMid = { connection: 0, pride: 0, valence: -0.031, arousal: 0.02, immersion: 0 };
-const sBusy = { connection: 0, pride: 0, valence: -0.031, arousal: 0.02, immersion: 0.4, lastActivity: ACT };
+const sMid = { connection: 0, poise: 0, valence: -0.031, arousal: 0.02, immersion: 0 };
+const sBusy = { connection: 0, poise: 0, valence: -0.031, arousal: 0.02, immersion: 0.4, lastActivity: ACT };
 const bC = bI(sMid, toneGrid);
 const bD = bI(sBusy, toneGrid);
 const line4 = (b) => b.split('\n').find((l) => /没在做什么|刚才在/.test(l)) || '(不出段4)';

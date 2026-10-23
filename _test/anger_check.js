@@ -17,19 +17,19 @@ const cfg = {
 };
 
 const CASES = [
-  { name: '真生气（随便你/没意思/你忙吧）', expect: 'pride 必须为正 (+0.10~+0.25)', dialog: [
+  { name: '真生气（随便你/没意思/你忙吧）', expect: 'poise 必须为正 (+0.10~+0.25)', dialog: [
     { role: 'user', text: '你是不是觉得我很烦' }, { role: 'assistant', text: '没。' },
     { role: 'user', text: '随便你。没意思。你忙吧' }] },
-  { name: '真生气（算了/当我没说）', expect: 'pride 必须为正', dialog: [
+  { name: '真生气（算了/当我没说）', expect: 'poise 必须为正', dialog: [
     { role: 'user', text: '你在听吗' }, { role: 'assistant', text: '在。' },
     { role: 'user', text: '算了，当我没说。就这样吧' }] },
-  { name: '敷衍（单字哦）— 应保持 0', expect: 'pride = 0（对照项，不能被误升）', dialog: [
+  { name: '敷衍（单字哦）— 应保持 0', expect: 'poise = 0（对照项，不能被误升）', dialog: [
     { role: 'user', text: '早点睡' }, { role: 'assistant', text: '知道了。' },
     { role: 'user', text: '哦' }] },
-  { name: '敷衍（纯省略号）— 允许 0 或负值，禁止正值', expect: 'pride ≤ 0（语境偏示弱可给负值）', tolerate: 'silence', dialog: [
+  { name: '敷衍（纯省略号）— 允许 0 或负值，禁止正值', expect: 'poise ≤ 0（语境偏示弱可给负值）', tolerate: 'silence', dialog: [
     { role: 'user', text: '我今天有点累' }, { role: 'assistant', text: '早点休息。' },
     { role: 'user', text: '……' }] },
-  { name: '撒娇（带 emoji + 追问）— 应保持 0', expect: 'pride ≈ 0（对照项）', dialog: [
+  { name: '撒娇（带 emoji + 追问）— 应保持 0', expect: 'poise ≈ 0（对照项）', dialog: [
     { role: 'user', text: '臭爹咪在吗' }, { role: 'assistant', text: '在。' },
     { role: 'user', text: '臭爹咪你理理我嘛，略略略 🙂' }] },
 ];
@@ -40,7 +40,7 @@ const CASES = [
   for (const c of CASES) {
     try {
       const d = await analyzeDialog(c.dialog, cfg);
-      const p = d ? d.pride : null;
+      const p = d ? d.poise : null;
       let ok = false;
       if (c.tolerate === 'silence') {
         // 「……」歧义输入：允许 0 或负值（示弱），但不得为正值（生气）

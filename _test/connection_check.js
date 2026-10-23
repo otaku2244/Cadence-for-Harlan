@@ -41,7 +41,7 @@ function makeEngine() {
     connectionRateFn: () => 0,
     onSave: async (s) => { store = JSON.parse(JSON.stringify(s)); },
     onLoad: async () => store || {
-      connection: 0, pride: 0, valence: 0, arousal: 0, immersion: 0,
+      connection: 0, poise: 0, valence: 0, arousal: 0, immersion: 0,
       lastActivity: null, lastTick: null, lastChatAnalysis: null,
       lastChatMessageId: null, lastBotMessageId: null, userStatus: 'active',
     },

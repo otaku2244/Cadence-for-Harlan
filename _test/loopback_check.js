@@ -218,7 +218,7 @@ console.log('\n[6] 让位的前提 —— 通知自身内容完整（方案 A �
   const grid = createToneGrid({ profiles: cfg.profiles, urgencyBoost: cfg.urgencyBoost });
   const desc = createDescriber(cfg.describe);
 
-  const stC = { connection: 0.62, pride: 0.15, valence: 0.05, arousal: 0.05 };
+  const stC = { connection: 0.62, poise: 0.15, valence: 0.05, arousal: 0.05 };
   const ctxLines = desc(stC);
   const notice = buildProactiveNotice(stC, grid, { scene: 'contact' }, cfg.sceneOverride, cfg.proactiveOutlet, desc);
   check('找她通知形状合规（assertBlockShape 零问题）', assertBlockShape(notice).length === 0, assertBlockShape(notice));
@@ -238,7 +238,7 @@ console.log('\n[6] 让位的前提 —— 通知自身内容完整（方案 A �
     notice.split('\n')[1]);
   check('找她通知自带出口说明', notice.includes(cfg.proactiveOutlet.contact));
 
-  const stF = { connection: 0.10, pride: 0.20, valence: -0.45, arousal: 0.05 };
+  const stF = { connection: 0.10, poise: 0.20, valence: -0.45, arousal: 0.05 };
   const fa = buildProactiveNotice(stF, grid, { scene: 'find_activity', reason: 'low_valence' }, cfg.sceneOverride, cfg.proactiveOutlet, desc);
   check('独处通知形状合规', assertBlockShape(fa).length === 0, assertBlockShape(fa));
   check('独处通知自带 sceneOverride 正文', fa.includes(cfg.sceneOverride.find_activity.low_valence));

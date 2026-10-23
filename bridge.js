@@ -39,7 +39,6 @@ const { createToneGrid } = require('./vendor/tone-grid.js');
 const { createDescriber } = require('./lib/describe.js');
 const { buildInjectionBlock, buildProactiveNotice, stripJiwenBlocks, assertBlockShape } = require('./lib/inject-text.js');
 const { createLoopbackGuard } = require('./lib/loopback.js');
-const { recordActivity } = require('./lib/activity.js');
 const { createSceneCooldown, createDialogDedup } = require('./lib/repeat-guard.js');
 const { analyzeDialog } = require('./lib/analyzer.js');
 const { createMcpHandler } = require('./lib/mcp.js');
@@ -89,37 +88,69 @@ const CFG = {
   // 判定器去重窗口：工具轮里同一段对话只喂一次。0 = 关闭。
   analyzeDedupSeconds: parseInt(process.env.ANALYZE_DEDUP_SECONDS || '900', 10),
 
-  // ── 骄傲防御：激活 find_activity 的 pride_block 通道 ──────────────
-  // vendor 默认 prideDefendThreshold = 1.0，是"永不触发"的哨兵值（connection 上限就是 1）
-  // → pride 永远不会因冷落升到 prideBlock(0.5) → find_activity 全天 0 次。
-  // 0.20 = observation 线，语义正好是"开始留意她，嘴硬就跟着升温"。
-  prideDefendThreshold: parseFloat(process.env.PRIDE_DEFEND_THRESHOLD || '0.20'),
+  // ── 从容防御：激活 find_activity 的 poise_block 通道 ──────────────
+  // vendor 默认 poiseDefendThreshold = 1.0，是"永不触发"的哨兵值（connection 上限就是 1）
+  // → poise 永远不会因冷落升到 poiseBlock(0.5) → find_activity 全天 0 次。
+  // 0.20 = observation 线，语义正好是"开始留意她，自持就跟着升温"。
+  poiseDefendThreshold: parseFloat(process.env.POISE_DEFEND_THRESHOLD || '0.20'),
   // vendor 默认 0.003 在 c∈[0.35,0.50) 的窗口里涨不到 0.5（实测差 0.05），
-  // 必须 ≥0.004 才能在窗口关闭（c 越过强制线）之前把 pride 顶上去。见 _test/scan_activity.js。
-  prideDefendRate: parseFloat(process.env.PRIDE_DEFEND_RATE || '0.004'),
+  // 必须 ≥0.004 才能在窗口关闭（c 越过强制线）之前把 poise 顶上去。见 _test/scan_activity.js。
+  poiseDefendRate: parseFloat(process.env.POISE_DEFEND_RATE || '0.004'),
+
+  // ── 唤醒度上升通道：想念久了心头起波（2026-10-23 打开）─────────────
+  // vendor 默认 threshold=1.0（「永不」哨兵），于是 arousal 只能靠判定器 delta，
+  // 实测上限只有 0.17 → classifyCluster 判 excited / agitated / restless 三簇
+  // 要求 a>0.3，这 3 簇（9 格）永远不可达。
+  //
+  // ⚠️ rate 必须 **大于** arousalRegress（0.005/min），否则上升力被回归力吃掉，
+  //    开了等于没开。实测（c 从 0.50 起、5min tick、无判定器 delta）：
+  //      rate=0.005 → 8h 只到 0.025（净值≈0）
+  //      rate=0.007 → 140min 到 0.3，290min 到 0.6   ← 慢档，当前使用
+  //      rate=0.010 → 55min 到 0.3，120min 到 0.6    ← 快档
+  //      rate=0.015 → 30min 到 0.3，60min 到 0.6
+  //    ⚠️ 副作用：c 持续 ≥ 阈值时上升是线性的、没有平衡点，整日不出现会顶到 1.0；
+  //       她一回来，回归 0.005/min 需要约 200 分钟才能从 1.0 落回 0（判定器 delta 会加速）。
+  arousalConnectionRiseThreshold: parseFloat(process.env.AROUSAL_CONNECTION_RISE_THRESHOLD || '1.0'),
+  arousalConnectionRiseRate: parseFloat(process.env.AROUSAL_CONNECTION_RISE_RATE || '0.002'),
 
   // ── 低情绪自我调节通道：find_activity 的第二入口（2026-10-09）──────
   // find_activity 有两条独立入口：
-  //   ① 「嘴硬」 c∈[0.35,0.50) 且 pride≥0.5（pride_block）
+  //   ① 「自持」 c∈[0.35,0.50) 且 poise≥0.5（poise_block）
   //   ② 「心情低」valence ≤ valenceActivity 且 immersion<0.3（low_valence）
   // ② **完全不看 connection**（vendor/jiwen.js:507）。
   //
   // vendor 把 ② 的阈值默认成 -1.0（永不触发），于是 find_activity 只能靠 ①。
-  // 而 ① 要求 pride 长期顶格 0.5 —— 实测她整日不出现时，pride≥0.5 占醒着的
+  // 而 ① 要求 poise 长期顶格 0.5 —— 实测她整日不出现时，poise≥0.5 占醒着的
   // **80%** 时间，描述层第 2 段被钉死在同一档（文案不流动）。
   //
-  // 打开 ② 之后冲浪改由「心情低 + 一个人」驱动，与 connection / pride 解耦：
-  // pride 交还给判定器 → 描述层恢复流动；c 也不再被 pride 绑架。
+  // 打开 ② 之后冲浪改由「心情低 + 一个人」驱动，与 connection / poise 解耦：
+  // poise 交还给判定器 → 描述层恢复流动；c 也不再被 poise 绑架。
   //
   // ⚠️ 阈值必须 **≥ valenceSetpoint** 才会常态成立（同一个坐标系里的两个数，
   //    改一个必须回头看另一个）。默认 -0.04 比 setpoint(-0.05) 高 0.01。
   valenceActivityThreshold: parseFloat(process.env.VALENCE_ACTIVITY_THRESHOLD || '-1.0'),
   // vendor 原生的「做事情能部分缓解连接需求」（默认 0 = 关）。
   // 打开后每次冲浪把 connection 往下压一点 → contact 被自然抑制，
-  // 「冲浪多于找你」不必再靠 pride 顶格来实现。
+  // 「冲浪多于找你」不必再靠 poise 顶格来实现。
   // ⚠️ vendor 只在**活动类型变化**时才扣（同类型连续冲浪不重复扣），
   //    且有 0.01 下限（防止清零导致阈值永不触达）。
   activityConnectionRelief: parseFloat(process.env.ACTIVITY_CONNECTION_RELIEF || '0'),
+  // ── 沉降路：connection 驱动的 valence 漂移（vendor 原生「改2」，默认关）──
+  // vendor/jiwen.js:339 —— drift = rate × mins × connection。
+  //
+  // ⚠️⚠️ 2026-10-10 实测结论：**不要用这个参数做提速**。⚠️⚠️
+  //   它是开关型，没有中间档（48h 实测，c 涨到饱和）：
+  //     rate=0       → v 完全不动（关）
+  //     rate=0.003   → v 只沉到 -0.065 就平衡（回归 0.025/5min > 下沉 0.015）
+  //     rate=0.05    → v 3 小时砸到底 -1.00 并永久锁死（下沉是回归的 10 倍）
+  //   原因：drift 与 connection 成正比，c 越高沉得越快；而唯一的回升力
+  //         （valenceRegress=0.005/min + 判定器 delta）量级远小于高 c 时的 drift。
+  //         所以 c 一旦到高位，任何 >0.005 的 rate 最终都会把 valence 压到底。
+  //   作者的示例值是 0.003，且 README 从未把它列为触发手段 —— 他本意只是
+  //   「心情微微往下压一点」。valence 的情绪层机制是 valenceLock（改3 是边际递减）。
+  //   提速请走：ACTION_COOLDOWN_MINUTES / POISE_DEFEND_* / CONNECTION_RATE。
+  valenceConnectionDriftThreshold: parseFloat(process.env.VALENCE_CONNECTION_DRIFT_THRESHOLD || '0.0'),
+  valenceConnectionDriftRate: parseFloat(process.env.VALENCE_CONNECTION_DRIFT_RATE || '0'),
 
   // ── 自由冲浪（surf）──────────────────────────────────────────────
   // find_activity 越阈 → 先查静默时段/日上限 → 再 spawn 一次 surf。
@@ -133,18 +164,6 @@ const CFG = {
   surfNodeBin: process.env.SURF_NODE_BIN || '/usr/local/bin/node',
   surfTimeoutMs: parseInt(process.env.SURF_TIMEOUT_MS || '180000', 10),
   surfFindingPath: process.env.SURF_FINDING_PATH || '/surf/finding',
-  // ── 活动登记（描述层段4 的真来源）─────────────────────────────
-  // `type` 决定 immersion 取多少（vendor 的 immersionMap：search = 0.4），
-  // `label` 是**唯一会进模型可见文本**的那一项（lib/describe.js 的 `{label}`）。
-  // 所以 label 写中文短语、type 写引擎认得的英文枚举，两者别混。
-  //
-  // ⚠️ label 说的是**动作**，措辞要跟 `lib/inject-text.js` 的 FINDING_HEAD（结果）
-  //    错开维度：「上网冲浪」（动作）→「搜到了一条有意思的内容：」（结果）。
-  //    label 建的是"那个部署在做的事" —— 当前 find_activity 唯一的真实行动就是
-  //    VPS 上的 `proactive-web-surf-agent`（`CFG.surfDir`）。将来接了别的
-  //    action/接口，各自用自己的 label 与自己的产物头，别回头改描述层。
-  surfActivityType: process.env.SURF_ACTIVITY_TYPE || 'search',
-  surfActivityLabel: process.env.SURF_ACTIVITY_LABEL || '上网冲浪',
 };
 
 // ── 时间（业务时区）──────────────────────────────
@@ -168,20 +187,22 @@ function log(level, msg) {
 }
 
 // ── 状态持久化 ────────────────────────────────────
-// 中性初值：积温上游 DEFAULT_STATE 用 axes[x][0] 作初值（pride/valence/arousal 都是 -1），
+// 中性初值：积温上游 DEFAULT_STATE 用 axes[x][0] 作初值（poise/valence/arousal 都是 -1），
 // 那会让角色开局就"糟透了"。这里通过 onLoad 返回中性初值绕过，不改 vendor 源码。
 const NEUTRAL_SEED = {
   connection: 0,
-  pride: 0,
+  poise: 0,
   valence: 0,
   arousal: 0,
-  immersion: 0,
-  lastActivity: null,
   lastTick: null,
   lastChatAnalysis: null,
   lastChatMessageId: null,
   lastBotMessageId: null,
   userStatus: 'active',
+  // 场景冷却表快照（2026-10-10 起持久化）：
+  //   { contact: <epoch_ms>, find_activity: <epoch_ms> }
+  // 由 createSceneCooldown 的 onChange 维护，saveState 时刷新。
+  cooldown: {},
 };
 
 let _stateCache = null;
@@ -199,14 +220,21 @@ function loadState() {
   }
   // 首次启动：必须返回中性种子。
   // 积温 vendor 的 onLoad 返回 null 时会保留 DEFAULT_STATE，
-  // 而 DEFAULT_STATE 用 axes[x][0] 作初值（pride/valence/arousal 全为 -1），
+  // 而 DEFAULT_STATE 用 axes[x][0] 作初值（poise/valence/arousal 全为 -1），
   // 会让角色开局就是"糟透了"。这里显式给出中性值绕过。
   return { ...NEUTRAL_SEED };
 }
 function saveState(s) {
+  // ⚠️ 冷却表是桥的私有字段，vendor 传进来的 s 里没有。
+  //    每次落盘都从冷却模块现取快照，避免被 vendor 的 state 整体覆盖。
+  try {
+    if (typeof _cooldownSnapshot === 'function') s.cooldown = _cooldownSnapshot();
+  } catch (_) {}
   _stateCache = s;
   _stateDirty = true;
 }
+// 由 createSceneCooldown 装配时注入（见下）。
+let _cooldownSnapshot = null;
 let _flushTimer = null;
 function scheduleFlush() {
   if (_flushTimer) return;
@@ -230,11 +258,32 @@ let toneGrid = null;
 let describer = null;
 let SCENE_OVERRIDE = {};
 let PROACTIVE_OUTLET = {};
+// ── 档位归一化（2026-10-23）────────────────────────────────────────
+// config 现在只保留 poise 档 1~3（档4/5 实测占比 0.0%，已删，45 格 → 27 格）。
+// ⚠️ 但 vendor 的 mergeProfiles 是「DEFAULT_PROFILES ← overrides」的浅合并：
+//    config 里缺的档位**不会变空**，会被作者的通用文案填上。实测 p=0.6 时
+//    冒出的正是默认档4「略显沉闷」、p=0.95 冒出档5「高冷简练……表现得好像很忙」——
+//    那是本部署明令禁止的冷与刻薄，且完全绕过 config。所以必须在桥侧补满：
+//    缺的档显式指向档3（最收的那档），语义是「高 poise 收敛到档3，不外泄默认值」。
+//    只有 4/5 需要补 —— classifyPoise 的返回值域是 1~5，档1~3 由 config 提供。
+function normalizeTiers(profiles) {
+  const out = {};
+  for (const cluster of Object.keys(profiles || {})) {
+    const tiers = { ...profiles[cluster] };
+    const fallback = tiers['3'] || [];
+    for (const k of ['4', '5']) {
+      if (!Array.isArray(tiers[k]) || tiers[k].length === 0) tiers[k] = fallback;
+    }
+    out[cluster] = tiers;
+  }
+  return out;
+}
 try {
   const tonePath = path.join(__dirname, 'config', 'tone-harlan.json');
   const toneCfg = JSON.parse(fs.readFileSync(tonePath, 'utf8'));
+  const normalized = normalizeTiers(toneCfg.profiles);
   toneGrid = createToneGrid({
-    profiles: toneCfg.profiles,
+    profiles: normalized,
     // ⚠️ 必须显式传：config 里四档全 null = 关掉 urgency 行。
     //    不传的话 vendor 会回落到内置 DEFAULT_URGENCY（作者文案，风格不符）。
     urgencyBoost: toneCfg.urgencyBoost,
@@ -242,7 +291,10 @@ try {
   describer = createDescriber(toneCfg.describe);
   SCENE_OVERRIDE = toneCfg.sceneOverride || {};
   PROACTIVE_OUTLET = toneCfg.proactiveOutlet || {};
-  log('INFO', 'tone grid loaded: tone-harlan.json (45 格 + 描述层，无覆盖层)');
+  // 格数以 config 实际键数为准（这里报 27；运行时是 45 —— 补满的 4/5 复用档3文案）。
+  let cfgCells = 0;
+  for (const cluster of Object.keys(toneCfg.profiles)) cfgCells += Object.keys(toneCfg.profiles[cluster]).length;
+  log('INFO', `tone grid loaded: tone-harlan.json (${cfgCells} 格 config / 档4-5 收敛至档3 + 描述层，无覆盖层)`);
 } catch (e) {
   log('ERROR', 'tone grid load failed, falling back to defaults: ' + e.message);
   toneGrid = createToneGrid();
@@ -256,7 +308,20 @@ const loopbackGuard = createLoopbackGuard();
 // ── 重复抑制 ──────────────────────────────────────
 // 冷却：一个持续状态别每 tick 报一次（find_activity 的常驻触发源）。
 // 去重：工具轮里 Operit 复用同一份 messages，同一段对话只该喂判定器一次。
-const actionCooldown = createSceneCooldown({ minutes: CFG.actionCooldownMinutes });
+const actionCooldown = createSceneCooldown({
+  minutes: CFG.actionCooldownMinutes,
+  // 冷却变更 → 标脏落盘（搭 state.json 的车，不自己写文件）。
+  onChange: () => {
+    // 首次 tick 前 _stateCache 可能还是 null；此时以中性骨架兜底，
+    // 确保启动后第一次投递就重启也能记住冷却。
+    if (!_stateCache) _stateCache = { ...NEUTRAL_SEED };
+    try { _stateCache.cooldown = actionCooldown.snapshot(); } catch (_) {}
+    _stateDirty = true;
+    scheduleFlush();
+  },
+});
+// 暴露给 saveState：始终取冷却模块的最新快照。
+_cooldownSnapshot = () => actionCooldown.snapshot();
 const dialogDedup = createDialogDedup({ windowSeconds: CFG.analyzeDedupSeconds });
 // 去重跳过的日志只在同一轮打一次（工具可能连发多次请求）
 let _lastDedupSkipKey = null;
@@ -271,6 +336,25 @@ function replyRelief(reason) {
     .catch((e) => log('WARN', 'reply relief failed: ' + e.message));
 }
 
+// ── 冷却表恢复（2026-10-10）──────────────────────
+// 必须在首次 tick / 首次主动唤醒判断之前执行，否则重启后的第一轮
+// 会当成"从未触发过"直接放行。loadState() 读的就是 state.json。
+try {
+  const persisted = loadState();
+  if (persisted && persisted.cooldown) {
+    actionCooldown.restore(persisted.cooldown);
+    const snap = actionCooldown.snapshot();
+    const scenes = Object.keys(snap);
+    if (scenes.length) {
+      log('INFO', 'cooldown restored: ' + scenes.map(
+        (s) => s + '=' + Math.round(actionCooldown.remainingMinutes(s)) + 'min left'
+      ).join(', '));
+    }
+  }
+} catch (e) {
+  log('WARN', 'cooldown restore failed: ' + e.message);
+}
+
 // ── 积温实例（全局唯一）──────────────────────────
 const jiwen = createJiwen({
   getLastMessage: () => null, // 桥不依赖此回调，由判定器独立取历史
@@ -283,12 +367,18 @@ const jiwen = createJiwen({
     valenceSetpoint: CFG.valenceSetpoint,
     connectionAccel: CFG.connectionAccel,
     accelDelay: CFG.accelDelay,
-    // 骄傲防御：vendor 默认是"永不"的哨兵值，必须显式打开
-    // （否则 pride 升不到 prideBlock → find_activity 永不触发）。
-    prideDefendThreshold: CFG.prideDefendThreshold,
-    prideDefendRate: CFG.prideDefendRate,
+    // 从容防御：vendor 默认是"永不"的哨兵值，必须显式打开
+    // （否则 poise 升不到 poiseBlock → find_activity 永不触发）。
+    poiseDefendThreshold: CFG.poiseDefendThreshold,
+    poiseDefendRate: CFG.poiseDefendRate,
+    // 唤醒度上升：c 过线后 a 才可能往上走（vendor 原生，默认阈值 1.0 = 永不）
+    arousalConnectionRiseThreshold: CFG.arousalConnectionRiseThreshold,
+    arousalConnectionRiseRate: CFG.arousalConnectionRiseRate,
     // 活动缓解：冲浪本身会压低 connection（vendor 原生，默认 0=关）
     activityConnectionRelief: CFG.activityConnectionRelief,
+    // 沉降路：connection 越高，valence 掉得越快
+    valenceConnectionDriftThreshold: CFG.valenceConnectionDriftThreshold,
+    valenceConnectionDriftRate: CFG.valenceConnectionDriftRate,
   },
   thresholds: {
     // 低情绪自我调节通道的阈值（≥ valenceSetpoint 才会常态成立）
@@ -305,20 +395,18 @@ const jiwen = createJiwen({
 //   valence 从 0 漂到 -0.03 仍是"中性"，文本一字不变 → 判为"没变" → 不注入。
 //   结果是积温明明在动、模型却看不到，30 分钟内只有第一轮带块。
 //
-// 所以指纹取**数值**而非文本：五轴各取 2 位小数拼成签名。
+// 所以指纹取**数值**而非文本：四轴各取 2 位小数拼成签名。
 //   · 签名变了 → 注入（哪怕渲染文本相同，状态语义已经不同）
 //   · 签名没变但超节流窗 → 注入（保持存在感）
 //
-// ⚠️ `immersion` 必须在内。自 2026-10-08 起它也是**块文本的一部分**
-//    （描述层段4 读它）：冲浪跑完 → immersion 0.4，段4 从「没在做什么特别的事。」
-//    变成「刚才在上网冲浪。」，而另外四轴可能一个数都没动。
-//    漏掉它 = 段4 的变化被节流吃掉，模型只看到旧那句。
+// ⚠️ 2026-10-23：`immersion` 已从指纹里移除 —— 活动登记整条切断后它恒为 0，
+//    留在指纹里只是多一个常量位。描述层段4 也已停渲染（见 lib/describe.js）。
 let lastInjectSig = null;
 let lastInjectAt = 0;
 function shouldInject(block, state) {
   const now = Date.now();
   const sig = state
-    ? [state.connection, state.pride, state.valence, state.arousal, state.immersion]
+    ? [state.connection, state.poise, state.valence, state.arousal]
         .map((x) => (Number(x) || 0).toFixed(2)).join(',')
     : block;
   const changed = sig !== lastInjectSig;
@@ -495,11 +583,6 @@ const server = http.createServer((req, res) => {  const u = new URL(req.url, 'ht
         const finding = ok ? {
           title: payload.title, url: payload.url, image: payload.image, note: payload.note,
         } : null;
-        // 冲浪刚跑完 → 刷新活动时间戳，让段4 说的是「刚才在上网冲浪。」
-        // 而不是"半小时前"。失败分支照样记：他确实去冲了，只是没翻到东西。
-        await recordActivity(jiwen, {
-          type: CFG.surfActivityType, label: CFG.surfActivityLabel,
-        }, log);
         const st = await jiwen.getState();
         const notice = buildProactiveNotice(st, toneGrid, {
           scene: 'find_activity', reason: 'surf', finding, failure,
@@ -624,7 +707,7 @@ const server = http.createServer((req, res) => {  const u = new URL(req.url, 'ht
     // ── 5. 异步喂判定器（不阻塞转发；仅真人开口才喂）──
     // ⚠️ 必须按"轮次"去重：模型调工具后 Operit 会用同一份 messages 再发一次请求，
     //    此时末 4 条 user/assistant 一字未变 → 判定器会把同一段对话判 N 次，
-    //    delta 叠加 N 次。（2026-10-07 实测同一轮判 4 次：pride 该掉 0.12 实际掉 0.66。）
+    //    delta 叠加 N 次。（2026-10-07 实测同一轮判 4 次：poise 该掉 0.12 实际掉 0.66。）
     //    原先靠 LLM_MIN_INTERVAL_SECONDS=20 挡，但工具轮间隔 33~49 秒，全部放行。
     //
     // ── 和 connection 的关系（2026-10-08 撤 reset 之后）──
@@ -717,44 +800,14 @@ async function tickOnce() {
           // 开口 ≠ 被回复：部分缓解（原语义）
           await jiwen.applyDelta({ connection: -0.35 });
         }
-      } else if (t.action === 'find_activity') {
-        // ⚠️ 冷却必须在这里判，且必须在 spawn 之前 ——
-        //   find_activity 的触发源是"惦记 + 嘴硬"这个持续状态，
-        //   状态不消失时每 tick 都会再判一次；不拦就是 50~110 条/天。
-        if (!actionCooldown.ok('find_activity')) { logCooldownSkip('find_activity'); continue; }
-        // 关于"桥碰不碰活动"：桥**不**决定他做什么，也不发英文活动枚举 ——
-        // 具体做什么由 Operit 侧工作流与模型自理。
-        // 唯一的例外是冲浪跑完之后的那一条 `setActivity` —— 那不是"安排活动"，
-        // 而是把已经发生的事**如实登记**给引擎，供描述层段4 使用
-        // （见 lib/activity.js；登记点挂在子进程的 'spawn' 事件上）。
-        //
-        // 场景统一为 find_activity，reason（pride_block / low_valence / high_arousal）
-        // 只作排查线索，不再分叉成独立 scene。
-        // 理由：引擎侧这三个 reason 的 action 都是 'find_activity'，
-        // 语义上都是"回头去找点事做"，投递目标（独处窗口）本就该一致。
-        //
-        // ── 有 surf 能力时改走"伸触手"路径 ──
-        // 闸门必须在 spawn **之前**：先跑再判等于白烧一次模型钱。
-        // 跑完的结果由 surf 回投 /surf/finding，那条路径再拼块 + fireProactive。
-        if (CFG.surfEnabled) {
-          if (inQuietHours()) {
-            log('INFO', `surf blocked by quiet hours (local_hour=${clock.localHour()}, quiet=${CFG.quietStart}-${CFG.quietEnd})`);
-            continue;
-          }
-          if (!checkDailyLimit()) {
-            log('INFO', 'surf blocked by daily limit');
-            continue;
-          }
-          spawnSurf(t.reason);
-          // spawn 即记账：surf 若超时/崩溃不会有 /surf/finding 回来，
-          // 不在这里记就会每个 tick 反复 spawn、反复烧模型钱。
-          actionCooldown.mark('find_activity');
-          continue;
-        }
-        const notice = buildProactiveNotice(st, toneGrid, { scene: 'find_activity', reason: t.reason }, SCENE_OVERRIDE, PROACTIVE_OUTLET, describer);
-        const sent = await fireProactive(notice, st, { scene: 'find_activity', reason: t.reason });
-        if (sent) actionCooldown.mark('find_activity');
-      }
+      } // [CUT-FIND-ACTIVITY 2026-10-10]
+        // 原 else if (t.action === 'find_activity') 消费分支已整段删除。
+        // 该分支曾负责：冷却判定 → (surfEnabled ? spawnSurf() : fireProactive())。
+        // 引擎侧 find_activity 已阉割，此分支永不进入。
+        // 保留的挂载点（供未来独立调度接入）：
+        //   · spawnSurf()          —— 见下方「自由冲浪：spawn surf 进程一次」
+        //   · POST /surf/finding   —— 见上方「自由冲浪产物回投」
+        // 当前二者无调用方 / 无触发源，属待启用接口，非死代码 bug。
     }
   } catch (e) {
     log('ERROR', 'tick failed: ' + e.message);
@@ -773,6 +826,11 @@ function inQuietHours() {
   return clock.inQuietHours(null, CFG.quietStart, CFG.quietEnd);
 }
 
+// ══ [CUT-FIND-ACTIVITY 2026-10-10] ══
+// ⚠️ 本函数当前**无调用方**：唯一入口（tick 里的 find_activity 消费分支）已随
+//    find_activity 阉割一并移除。此处保留作为「主动冲浪」的挂载点，待独立调度接入。
+//    下方 CFG.surf* 与 /surf/finding 同理保留。SURF_ENABLED 目前无实际作用。
+// ══════════════════════════════════════════════════════════
 // ── 自由冲浪：spawn surf 进程一次 ────────────────────────
 // 闸门（静默时段 / 日上限）由调用方在 spawn **之前**判过，这里不重复判。
 // 结果不在这里处理：surf 跑完会 POST 回 /surf/finding，那条路径负责拼块与投递。
@@ -811,15 +869,6 @@ function spawnSurf(reason) {
   const cap = (buf) => { out += buf.toString('utf8'); if (out.length > 8000) out = out.slice(-8000); };
   child.stdout.on('data', cap);
   child.stderr.on('data', cap);
-  // ── 活动登记：只在进程**真的起来了**之后 ──
-  // 用 'spawn' 而不是在函数开头记：entry 路径配错 / EACCES 这类情况下
-  // spawn 会走 'error' 而永不 'spawn'，那时他其实什么都没做，
-  // 记了就等于让段4 声称一件没发生的事（describe.js：不编造活动）。
-  child.on('spawn', () => {
-    recordActivity(jiwen, {
-      type: CFG.surfActivityType, label: CFG.surfActivityLabel,
-    }, log).catch(() => { /* recordActivity 内部已兜底并记日志 */ });
-  });
   const timer = setTimeout(() => {
     log('ERROR', `surf timeout after ${CFG.surfTimeoutMs}ms, killing pid ${child.pid}`);
     try { child.kill('SIGKILL'); } catch (_) { /* 已退出 */ }
@@ -888,7 +937,7 @@ async function fireProactive(notice, state, meta) {
       protocol: 'jiwen-wake/1',
       reason: 'proactive',
       message: notice,
-      state: { connection: state.connection, pride: state.pride, valence: state.valence, arousal: state.arousal },
+      state: { connection: state.connection, poise: state.poise, valence: state.valence, arousal: state.arousal },
     }), 'utf8');
     await new Promise((resolve, reject) => {
       const r = lib.request({
@@ -945,8 +994,14 @@ const mcp = CFG.mcpEnabled ? createMcpHandler({
     log('INFO', `proactive: max=${CFG.proactiveMaxPerDay}/day quiet=${CFG.quietStart}-${CFG.quietEnd}` +
       `(tz+${CFG.tzOffsetHours}) cooldown=${CFG.actionCooldownMinutes}min` +
       ` analyzerDedup=${CFG.analyzeDedupSeconds}s`);
-    log('INFO', `prideDefend: threshold=${CFG.prideDefendThreshold} rate=${CFG.prideDefendRate}` +
+    log('INFO', `poiseDefend: threshold=${CFG.poiseDefendThreshold} rate=${CFG.poiseDefendRate}` +
       ` (vendor 默认 1.0/0.003 = find_activity 永不触发)`);
+    log('INFO', `arousalRise: threshold=${CFG.arousalConnectionRiseThreshold}` +
+      ` rate=${CFG.arousalConnectionRiseRate}` +
+      (CFG.arousalConnectionRiseThreshold >= 1
+        ? ' (阈值为 1.0 = 关闭，三簇不可达)'
+        : ` (净上升 ${(CFG.arousalConnectionRiseRate - 0.005).toFixed(4)}/min，` +
+          `到 0.3 约 ${Math.round(0.3 / Math.max(0.0001, CFG.arousalConnectionRiseRate - 0.005))} 分钟)`));
     if (mcp) log('INFO', `MCP endpoint: http://${CFG.host}:${CFG.port}${CFG.mcpPath} (Streamable HTTP, 3 tools)`);
   });
   // SSE 长连接需要无限期保持；HTTP 层其余超时对短请求无意义。

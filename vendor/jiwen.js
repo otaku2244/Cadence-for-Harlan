@@ -1,6 +1,6 @@
 // ============================================================
 // 积温 — 不靠概率骰子的 AI 角色主动意识引擎
-// 五轴连续状态：connection / pride / valence / arousal / immersion
+// 五轴连续状态：connection / poise / valence / arousal / immersion
 // 数学漂移 + 阈值触发 + 可注入持久化/消息源/LLM分析
 // 附带 simulate.js 参数模拟器 + jiwen.test.js 测试套件（29项）
 // ============================================================
@@ -14,7 +14,7 @@
  * @param {Object} [opts.initialState]   — 初始状态（默认全 0）
  * @param {Object} [opts.axes]           — 轴名称到 [min, max] 范围的映射
  * @param {Object} [opts.rates]          — 每轴每分钟漂移速率
- * @param {Object} [opts.thresholds]     — { observation, considerContact, forceContact, prideBlock, valenceActivity, arousalAgitation }
+ * @param {Object} [opts.thresholds]     — { observation, considerContact, forceContact, poiseBlock, valenceActivity, arousalAgitation }
  * @param {Object} [opts.immersionMap]   — 活动类型 → 初始沉浸度
  * @param {Function} opts.connectionRateFn — (lastMessage) => number  每分钟连接需求增长速率
  * @param {Function} opts.onSave         — async (state) => void  持久化回调
@@ -29,7 +29,7 @@ function createJiwen(opts) {
   // ── 轴定义 ──────────────────────
   const axes = opts.axes || {
     connection: [-0, 1],
-    pride:      [-1, 1],
+    poise:      [-1, 1],
     valence:    [-1, 1],   // 愉悦度：好受 ↔ 难受
     arousal:    [-1, 1],   // 唤醒度：平静 ↔ 焦躁/兴奋
     immersion:  [ 0, 1],
@@ -40,7 +40,7 @@ function createJiwen(opts) {
     connectionGrowth: null, // 由 connectionRateFn 动态决定
     connectionOnReply: 0.20,  // [已弃用] 对方回复时 connection 降幅（现由 LLM delta 接管）
     immersionDecay:   0.010,
-    prideRegress:     0.003,
+    poiseRegress:     0.003,
 
     // 时间分段加速：距上次消息 < accelDelay 分钟时线性增长（accel=1），
     // 超过后才启用 connectionAccel。默认 0 = 立即加速，向后兼容
@@ -72,16 +72,15 @@ function createJiwen(opts) {
     arousalLockThreshold: 1.0,     // valence 超过此值触发锁定（1.0=永不）
     arousalLockFactor:    1.0,     // 回归速率乘数（0.3=减慢 70%）
 
-    // 骄傲防御：被冷落时 pride 向正向漂移（心理防御）
-    prideDefendThreshold: 1.0, // connection 超过此值触发防御（1.0=永不）
-    prideDefendTarget:    0.5, // 防御时 pride 漂移目标
-    prideDefendRate:      0.003, // 防御漂移速率
+    // 从容防御：被冷落时 poise 向正向漂移（心理防御）
+    poiseDefendThreshold: 1.0, // connection 超过此值触发防御（1.0=永不）
+    poiseDefendTarget:    0.5, // 防御时 poise 漂移目标
+    poiseDefendRate:      0.003, // 防御漂移速率
 
-    // Pride × Connection 冲突：想要又端着 → 内心战争加热 arousal
-    prideArousalConflictRate: 0,    // connection≥considerContact 且 pride≥prideBlock 时额外 arousal 升温
+    // [CUT-FIND-ACTIVITY 2026-10-10] poiseArousalConflictRate 已废弃（原服务于 find_activity 的 poise_block 通道）
 
-    // 盔甲侵蚀：想念太重，维持冷漠太累 → pride 被迫下降
-    prideErosionRate: 0,            // connection≥forceContact 时额外侵蚀 pride 的速率
+    // 盔甲侵蚀：想念太重，维持冷漠太累 → poise 被迫下降
+    poiseErosionRate: 0,            // connection≥forceContact 时额外侵蚀 poise 的速率
 
     // 活动缓解：做事情能部分缓解连接需求
     activityConnectionRelief: 0,   // setActivity 时 connection 降幅
@@ -114,9 +113,9 @@ function createJiwen(opts) {
     observation:     0.20,
     considerContact: 0.35,
     forceContact:    0.50,
-    prideBlock:      0.50,
-    valenceActivity:   -1.0,   // valence 低于此值时触发自我调节（-1.0=永不）
-    arousalAgitation:   0.7,   // arousal 高于此值时也触发自我调节（躁动难坐）
+    poiseBlock:      0.50,   // [CUT-FIND-ACTIVITY 2026-10-10] 已废弃（find_activity 已阉割）
+    valenceActivity:   -1.0,   // [CUT-FIND-ACTIVITY 2026-10-10] 已废弃（原自我调节通道已删除）
+    arousalAgitation:   0.7,   // [CUT-FIND-ACTIVITY 2026-10-10] 已废弃（原自我调节通道已删除）
   }, opts.thresholds);
 
   const immersionMap = opts.immersionMap || {
@@ -149,7 +148,7 @@ function createJiwen(opts) {
   // ── 内部状态 ────────────────────
   const DEFAULT_STATE = {
     connection: axes.connection[0],
-    pride:      axes.pride[0],
+    poise:      axes.poise[0],
     valence:    axes.valence[0],
     arousal:    axes.arousal[0],
     immersion:  axes.immersion[0],
@@ -207,10 +206,10 @@ function createJiwen(opts) {
     if (!minutesElapsed || minutesElapsed <= 0) return [];
 
     const mins = Math.min(minutesElapsed, 60);
-    const stateBefore = { connection: state.connection, pride: state.pride, valence: state.valence, arousal: state.arousal, immersion: state.immersion };
+    const stateBefore = { connection: state.connection, poise: state.poise, valence: state.valence, arousal: state.arousal, immersion: state.immersion };
 
     // ── Saga 偏置：长期叙事弧线对状态基线的引力 ──
-    // 可选回调，由外部注入。返回 {connection, pride, valence, arousal, immersion} 每分钟偏置
+    // 可选回调，由外部注入。返回 {connection, poise, valence, arousal, immersion} 每分钟偏置
     let sagaBias = null;
     if (opts.getSagaBias) {
       try {
@@ -292,31 +291,31 @@ function createJiwen(opts) {
       }
     }
 
-    // ── 骄傲：被冷落时防御性升高，否则回归 saga 偏置的稳态 ──
-    const sagaPrideBias = sagaBias?.pride || 0;
-    if (state.connection >= rates.prideDefendThreshold) {
-      // 防御机制：被冷落 → pride 朝 (prideDefendTarget + saga偏置) 漂移
-      const effectiveDefendTarget = clamp(rates.prideDefendTarget + sagaPrideBias, axes.pride[0], axes.pride[1]);
-      if (state.pride < effectiveDefendTarget) {
-        state.pride = Math.min(effectiveDefendTarget, state.pride + rates.prideDefendRate * mins);
-      } else if (state.pride > effectiveDefendTarget) {
-        state.pride = Math.max(effectiveDefendTarget, state.pride - rates.prideDefendRate * mins);
+    // ── 从容：被冷落时防御性升高，否则回归 saga 偏置的稳态 ──
+    const sagaPoiseBias = sagaBias?.poise || 0;
+    if (state.connection >= rates.poiseDefendThreshold) {
+      // 防御机制：被冷落 → poise 朝 (poiseDefendTarget + saga偏置) 漂移
+      const effectiveDefendTarget = clamp(rates.poiseDefendTarget + sagaPoiseBias, axes.poise[0], axes.poise[1]);
+      if (state.poise < effectiveDefendTarget) {
+        state.poise = Math.min(effectiveDefendTarget, state.poise + rates.poiseDefendRate * mins);
+      } else if (state.poise > effectiveDefendTarget) {
+        state.poise = Math.max(effectiveDefendTarget, state.poise - rates.poiseDefendRate * mins);
       }
     } else {
       // 未触发防御：回归 saga 偏置的稳态（而非绝对0）
-      const prideResting = clamp(sagaPrideBias, -0.3, 0.3);
-      if (state.pride > prideResting) {
-        state.pride = Math.max(prideResting, state.pride - rates.prideRegress * mins);
-      } else if (state.pride < prideResting) {
-        state.pride = Math.min(prideResting, state.pride + rates.prideRegress * mins);
+      const poiseResting = clamp(sagaPoiseBias, -0.3, 0.3);
+      if (state.poise > poiseResting) {
+        state.poise = Math.max(poiseResting, state.poise - rates.poiseRegress * mins);
+      } else if (state.poise < poiseResting) {
+        state.poise = Math.min(poiseResting, state.poise + rates.poiseRegress * mins);
       }
     }
 
-    // ── 盔甲侵蚀：想念太重，维持冷漠太累 → pride 被迫下降 ──
-    if (rates.prideErosionRate > 0 &&
+    // ── 盔甲侵蚀：想念太重，维持冷漠太累 → poise 被迫下降 ──
+    if (rates.poiseErosionRate > 0 &&
         state.connection >= thresholds.forceContact &&
-        state.pride > 0) {
-      state.pride = Math.max(0, state.pride - rates.prideErosionRate * mins);
+        state.poise > 0) {
+      state.poise = Math.max(0, state.poise - rates.poiseErosionRate * mins);
     }
 
     // ── Valence（愉悦度）：回归设定点，想念强烈时坏情绪难消散 ──
@@ -368,12 +367,9 @@ function createJiwen(opts) {
       arousalRiseForce = rates.arousalConnectionRiseRate * mins;
     }
 
-    // Pride × Connection 冲突升温：想要又端着 → 内心战争额外加热 arousal
-    if (rates.prideArousalConflictRate > 0 &&
-        state.connection >= thresholds.considerContact &&
-        state.pride >= thresholds.prideBlock) {
-      arousalRiseForce += rates.prideArousalConflictRate * mins;
-    }
+    // [CUT-FIND-ACTIVITY 2026-10-10]
+    // poiseArousalConflictRate 升温块已删除：它只服务于 find_activity 的
+    // poise_block 通道；通道移除后该值恒为 0，保留引用会误导。
 
     // 两力竞争，净效果 = 回归 + 上升
     const netArousal = state.arousal + arousalRegressForce + arousalRiseForce;
@@ -396,7 +392,7 @@ function createJiwen(opts) {
       log(
         `[积温] tick ${mins}min | ` +
         `c:${stateBefore.connection.toFixed(2)}→${state.connection.toFixed(2)} ` +
-        `p:${stateBefore.pride.toFixed(2)}→${state.pride.toFixed(2)} ` +
+        `p:${stateBefore.poise.toFixed(2)}→${state.poise.toFixed(2)} ` +
         `v:${stateBefore.valence.toFixed(2)}→${state.valence.toFixed(2)} ` +
         `a:${stateBefore.arousal.toFixed(2)}→${state.arousal.toFixed(2)} ` +
         `i:${state.immersion.toFixed(2)} | ` +
@@ -412,7 +408,7 @@ function createJiwen(opts) {
       log(
         `[积温] tick ${mins}min | ` +
         `c:${stateBefore.connection.toFixed(2)}→${state.connection.toFixed(2)} ` +
-        `p:${stateBefore.pride.toFixed(2)}→${state.pride.toFixed(2)} ` +
+        `p:${stateBefore.poise.toFixed(2)}→${state.poise.toFixed(2)} ` +
         `v:${stateBefore.valence.toFixed(2)}→${state.valence.toFixed(2)} ` +
         `a:${stateBefore.arousal.toFixed(2)}→${state.arousal.toFixed(2)} ` +
         `i:${state.immersion.toFixed(2)} | ` +
@@ -432,7 +428,7 @@ function createJiwen(opts) {
     // 判定逻辑只在这里写一遍，轨迹在同一个分支里顺手记，避免两处逻辑漂移。
     const trace = [];
     const c = state.connection;
-    const p = state.pride;
+    const p = state.poise;
     const i = state.immersion;
     const v = state.valence;
     const a = state.arousal;
@@ -457,37 +453,25 @@ function createJiwen(opts) {
       });
     }
 
+    // ══════════════════════════════════════════════════════════════════
+    // [CUT-FIND-ACTIVITY 2026-10-10]
+    // find_activity 已整条阉割（原「poise_block」通道）。
+    // 原逻辑：c 进考虑区且 poise ≥ poiseBlock → 推 find_activity（找事做，不开口）。
+    // 阉割理由：poise 涨到 poiseBlock(0.5) 需 ~8h，而 c 走完 [0.35,0.50) 窗口仅
+    //           36min、随即进强制 contact —— 该分支在真实时序上永远不可达，
+    //           属作者设计固有缺陷（非参数可调）。
+    // 现语义：poise 不再拦截开口，进考虑区即开口（等同原 else 分支）。
+    // ══════════════════════════════════════════════════════════════════
     if (c >= thresholds.considerContact && c < thresholds.forceContact) {
-      if (p >= thresholds.prideBlock) {
-        if (i < 0.2) {
-          triggers.push({
-            action: 'find_activity',
-            reason: 'pride_block',
-            urgency: c - 0.30,
-          });
-          trace.push({
-            gate: '开口', fired: false, divertedTo: 'find_activity',
-            reason: 'pride 挡住开口，转身去找事做',
-            detail: { pride: r3(p), 嘴硬线: thresholds.prideBlock, immersion: r3(i) },
-          });
-        } else {
-          trace.push({
-            gate: '开口', fired: false,
-            reason: 'pride 挡住开口，immersion 又缓冲住了（没转成找事做）',
-            detail: { pride: r3(p), 嘴硬线: thresholds.prideBlock, immersion: r3(i), immersion上限: 0.2 },
-          });
-        }
-      } else {
-        triggers.push({
-          action: 'contact',
-          urgency: c - 0.30,
-        });
-        trace.push({
-          gate: '开口', fired: true, action: 'contact',
-          reason: '过了 pride 闸门',
-          detail: { pride: r3(p), 嘴硬线: thresholds.prideBlock },
-        });
-      }
+      triggers.push({
+        action: 'contact',
+        urgency: c - 0.30,
+      });
+      trace.push({
+        gate: '开口', fired: true, action: 'contact',
+        reason: '进了考虑区（poise 拦截已移除）',
+        detail: { poise: r3(p), 自持线: thresholds.poiseBlock },
+      });
     }
 
     if (c >= thresholds.forceContact) {
@@ -498,35 +482,17 @@ function createJiwen(opts) {
       });
       trace.push({
         gate: '开口', fired: true, action: 'contact', forced: true,
-        reason: '过了强制线，pride 挡不住了',
+        reason: '过了强制线，poise 挡不住了',
         detail: { connection: r3(c), 强制线: thresholds.forceContact },
       });
     }
 
-    // 低情绪自我调节：心情差或太躁时主动找事做（与 pride_block 并列）
-    if (v <= thresholds.valenceActivity || a >= thresholds.arousalAgitation) {
-      const alreadyFinding = triggers.some(t => t.action === 'find_activity');
-      const lowValence = v <= thresholds.valenceActivity;
-      if (!alreadyFinding && i < 0.3) {
-        const reason = lowValence ? 'low_valence' : 'high_arousal';
-        triggers.push({
-          action: 'find_activity',
-          reason,
-          urgency: Math.min(1, Math.abs(lowValence ? v : a) / 1),
-        });
-        trace.push({
-          gate: '自我调节', fired: true, action: 'find_activity',
-          reason: lowValence ? 'valence 过低' : 'arousal 过高',
-          detail: { valence: r3(v), arousal: r3(a) },
-        });
-      } else if (!alreadyFinding) {
-        trace.push({
-          gate: '自我调节', fired: false,
-          reason: 'immersion 太高，没转去找事做',
-          detail: { immersion: r3(i), immersion上限: 0.3 },
-        });
-      }
-    }
+    // [CUT-FIND-ACTIVITY 2026-10-10]
+    // 原「低情绪自我调节」通道（valence ≤ valenceActivity || arousal ≥ arousalAgitation
+    //   → find_activity）已整段删除。
+    // 死因：valenceActivity 默认 -1.0（永不成立），arousal 实测上限 0.035（远低于
+    //       arousalAgitation 0.7）—— 双判据均不可达。
+    // 行为选择（找她 / 找事做）不再由五维情绪驱动，已移交工作流层。
 
     lastTriggerTrace = trace;
     return triggers;
@@ -617,8 +583,8 @@ function createJiwen(opts) {
       scaled.arousal *= (1 - dampen);
     }
 
-    if (scaled.pride !== undefined)
-      state.pride = clamp(state.pride + scaled.pride, axes.pride[0], axes.pride[1]);
+    if (scaled.poise !== undefined)
+      state.poise = clamp(state.poise + scaled.poise, axes.poise[0], axes.poise[1]);
     if (scaled.valence !== undefined)
       state.valence = clamp(state.valence + scaled.valence, axes.valence[0], axes.valence[1]);
     if (scaled.arousal !== undefined)
@@ -696,13 +662,13 @@ function createJiwen(opts) {
   // ── 可读状态摘要（调试用）──
   function getStateSummary() {
     const c = state.connection;
-    const p = state.pride;
+    const p = state.poise;
     const v = state.valence;
     const a = state.arousal;
     const i = state.immersion;
 
     const cLabel = c < 0.20 ? '悠闲' : c < 0.35 ? '留意' : c < 0.50 ? '想念' : '焦躁';
-    const pLabel = p > 0.8 ? '全副武装' : p > 0.5 ? '防御' : p > 0.3 ? '端着' : p > 0.1 ? '微防' : '放软';
+    const pLabel = p > 0.8 ? '沉静' : p > 0.5 ? '收拢' : p > 0.3 ? '自持' : p > 0.1 ? '浅收' : '松开';
     const vLabel = v > 0.3 ? '开心' : v < -0.3 ? '难受' : '中性';
     const aLabel = a > 0.3 ? '焦躁' : a < -0.3 ? '慵懒' : '平静';
     const iLabel = i > 0.3 && state.lastActivity
@@ -751,7 +717,7 @@ function createJiwen(opts) {
 function defaultPromptContext(state, p) {
   const parts = [];
   const c = state.connection;
-  const pr = state.pride;
+  const pr = state.poise;
   const v = state.valence;
   const a = state.arousal;
 
@@ -766,7 +732,7 @@ function defaultPromptContext(state, p) {
     parts.push(`${p.subjectName}很久没动静了。有点在意——${p.subjectPronoun}去哪了？`);
   }
 
-  // 骄傲 → 表达方式（五档）
+  // 从容 → 表达方式（五档）
   if (pr > 0.8) {
     parts.push('拒绝任何需要对方的念头——冷漠地划清界限。');
   } else if (pr > 0.5) {
@@ -809,11 +775,11 @@ function defaultPromptContext(state, p) {
 function defaultStyleGuidance(state, p) {
   const rules = [];
   const c = state.connection;
-  const pr = state.pride;
+  const pr = state.poise;
   const v = state.valence;
   const a = state.arousal;
 
-  // ── 骄傲（五档）──
+  // ── 从容（五档）──
   if (pr > 0.8) {
     rules.push('- 你几乎是一种冷漠的回避。不承认任何情绪，话里不带感情色彩。');
   } else if (pr > 0.5) {

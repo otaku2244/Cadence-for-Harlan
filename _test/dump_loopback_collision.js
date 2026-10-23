@@ -49,13 +49,13 @@ function show(title, statePre) {
   console.log(block + '\n\n' + notice.replace(/\r?\n+/g, ' ').trim());
 }
 
-show('场景 1：强烈想念，越强制开口线（c=0.62）', { connection: 0.62, pride: 0.15, valence: 0.05, arousal: 0.05 });
-show('场景 2：刚过考虑线（c=0.38）', { connection: 0.38, pride: 0.15, valence: 0.05, arousal: 0.05 });
+show('场景 1：强烈想念，越强制开口线（c=0.62）', { connection: 0.62, poise: 0.15, valence: 0.05, arousal: 0.05 });
+show('场景 2：刚过考虑线（c=0.38）', { connection: 0.38, poise: 0.15, valence: 0.05, arousal: 0.05 });
 
 // 场景 3：独处通知。这条不走 contact（c 越低越容易触发 find_activity），
 // 场景正文来自 sceneOverride，与此刻块的 reactive 正文不同源，看看是否也冲突。
 (function () {
-  const state = { connection: 0.10, pride: 0.20, valence: -0.45, arousal: 0.05 };
+  const state = { connection: 0.10, poise: 0.20, valence: -0.45, arousal: 0.05 };
   const notice = bN(state, grid, { scene: 'find_activity', reason: 'low_valence' }, cfg.sceneOverride, cfg.proactiveOutlet);
   const block = bI(state, grid);
   console.log('\n' + '='.repeat(72));

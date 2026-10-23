@@ -195,10 +195,10 @@ ok('C13 调用方按 sent 记账 (contact)', /if \(sent\) \{\s*actionCooldown\.m
 ok('C14 调用方按 sent 记账 (find_activity)', src.includes("if (sent) actionCooldown.mark('find_activity');"));
 
 // 引擎参数：骄傲防御必须传进 rates（vendor 默认是"永不"的哨兵值）
-ok('C15 rates 传了 prideDefendThreshold', /prideDefendThreshold:\s*CFG\.prideDefendThreshold/.test(src));
-ok('C16 rates 传了 prideDefendRate', /prideDefendRate:\s*CFG\.prideDefendRate/.test(src));
-ok('C17 默认 threshold = 0.20', /PRIDE_DEFEND_THRESHOLD \|\| '0\.20'/.test(src));
-ok('C18 默认 rate = 0.004', /PRIDE_DEFEND_RATE \|\| '0\.004'/.test(src));
+ok('C15 rates 传了 poiseDefendThreshold', /poiseDefendThreshold:\s*CFG\.poiseDefendThreshold/.test(src));
+ok('C16 rates 传了 poiseDefendRate', /poiseDefendRate:\s*CFG\.poiseDefendRate/.test(src));
+ok('C17 默认 threshold = 0.20', /POISE_DEFEND_THRESHOLD \|\| '0\.20'/.test(src));
+ok('C18 默认 rate = 0.004', /POISE_DEFEND_RATE \|\| '0\.004'/.test(src));
 ok('C19 默认日上限 = 8', /PROACTIVE_MAX_PER_DAY \|\| '8'/.test(src));
 ok('C20 默认冷却 = 180 分钟', /ACTION_COOLDOWN_MINUTES \|\| '180'/.test(src));
 ok('C21 默认去重窗 = 900 秒', /ANALYZE_DEDUP_SECONDS \|\| '900'/.test(src));
@@ -214,7 +214,7 @@ ok('C23 MCP runtime 暴露 cooldown_left_minutes', src.includes('cooldown_left_m
   const fs2 = require('fs');
   const v = fs2.readFileSync(path.join(__dirname, '..', 'vendor', 'jiwen.js'), 'utf8');
   ok('C24 vendor 仍以哨兵值作默认（说明我们没改 vendor）',
-    v.includes('prideDefendThreshold: 1.0,') && v.includes('valenceActivity:   -1.0,'));
+    v.includes('poiseDefendThreshold: 1.0,') && v.includes('valenceActivity:   -1.0,'));
 }
 
 // ════════════════════════════════════════════════════

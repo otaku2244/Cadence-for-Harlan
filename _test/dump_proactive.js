@@ -33,7 +33,7 @@ const CLUSTERS = {
   calm:      { v: 0.0,  a: -0.5 },
   neutral:   { v: 0.0,  a: 0.0  },
 };
-const PRIDE = { 1: -0.05, 2: 0.2, 3: 0.4, 4: 0.65, 5: 0.9 };
+const POISE = { 1: -0.05, 2: 0.2, 3: 0.4, 4: 0.65, 5: 0.9 };
 
 const notice = (st, scene, reason) =>
   buildProactiveNotice(st, tg, { scene, reason }, cfg.sceneOverride, cfg.proactiveOutlet, desc);
@@ -57,20 +57,20 @@ w('| ② | 描述层 1~4 行 | `describe` | **2026-10-08 新增**。处境陈述
 w('| ③ | ~~档位行~~ | — | **2026-10-08 已整条删除**（与 45 格同义重复，详见 `lib/inject-text.js` 文件头） |');
 w('| ④ | 正文 | 见下两节 | 45 格 / `sceneOverride` / 冲浪产物 |');
 w('| ⑤ | 出口说明 | `proactiveOutlet` | **只在主动唤醒加**，此刻块没有 |');
-w('| ⑥ | 尾句 | `BOUNDARY_LINE` / `SURF_TAIL_LINE` | 固定，压尾 |');
+w('| ⑥ | 尾句 | `BOUNDARY_LINE`（唯一） | 固定，压尾 |');
 w();
 w('---');
 w();
 w('## 一、找她（contact）');
 w();
 w('触发条件由积温引擎给：`connection` 越过考虑线（0.35）。');
-w('正文 = **描述层 + 45 格**。`pride` 只决定 45 格取哪一档，**不再有覆盖分支**。');
+w('正文 = **描述层 + 45 格**。`poise` 只决定 45 格取哪一档，**不再有覆盖分支**。');
 w();
 
 function block(title, st, scene, reason) {
   w('### ' + title);
   w();
-  w('状态：`' + ['connection', 'pride', 'valence', 'arousal']
+  w('状态：`' + ['connection', 'poise', 'valence', 'arousal']
     .map((k) => `${k}=${st[k]}`).join('  ') + '`');
   w();
   w('```text');
@@ -79,25 +79,25 @@ function block(title, st, scene, reason) {
   w();
 }
 
-block('开口动机成立（c 过线，pride 不高）',
-  { connection: 0.42, pride: 0.20, valence: 0.0, arousal: 0.0, immersion: 0.10 }, 'contact');
-block('端着（c 过线但 pride 高）',
-  { connection: 0.42, pride: 0.65, valence: 0.0, arousal: -0.5, immersion: 0.10 }, 'contact');
+block('开口动机成立（c 过线，poise 不高）',
+  { connection: 0.42, poise: 0.20, valence: 0.0, arousal: 0.0, immersion: 0.10 }, 'contact');
+block('端着（c 过线但 poise 高）',
+  { connection: 0.42, poise: 0.65, valence: 0.0, arousal: -0.5, immersion: 0.10 }, 'contact');
 block('强制线以上（c ≥ 0.50）',
-  { connection: 0.62, pride: 0.20, valence: 0.0, arousal: 0.0, immersion: 0.10 }, 'contact');
+  { connection: 0.62, poise: 0.20, valence: 0.0, arousal: 0.0, immersion: 0.10 }, 'contact');
 block('心情也在低位（c 过线 + v/a 双低）',
-  { connection: 0.42, pride: 0.20, valence: -0.6, arousal: -0.6, immersion: 0.10 }, 'contact');
+  { connection: 0.42, poise: 0.20, valence: -0.6, arousal: -0.6, immersion: 0.10 }, 'contact');
 
 w('### 找她会出现的全部 45 格正文（9 簇 × 5 档 = 45 条）');
 w();
 w('下表取 `proactive` 列。`reactive` 列的同格文案略有不同（回复 vs 开口），本清单不重复展开，');
 w('见 `_test/all-prompts.txt`。');
 w();
-w('| 簇 | pride 档 | 45 格正文（proactive） |');
+w('| 簇 | poise 档 | 45 格正文（proactive） |');
 w('|---|---|---|');
 for (const [name, va] of Object.entries(CLUSTERS)) {
   for (const tier of [1, 2, 3, 4, 5]) {
-    const st = { connection: 0.42, pride: PRIDE[tier], valence: va.v, arousal: va.a, immersion: 0.1 };
+    const st = { connection: 0.42, poise: POISE[tier], valence: va.v, arousal: va.a, immersion: 0.1 };
     w(`| \`${name}\` | ${tier} | ${(tg.getPromptContext(st) || '').replace(/\n/g, ' ')} |`);
   }
 }
@@ -111,10 +111,10 @@ w('描述层照常拼在前面 —— 它说的是"我此刻在什么处境"，�
 w('引擎给三个 reason，另有一条 `default` 兜底。');
 w();
 for (const [reason, st] of [
-  ['pride_block', { connection: 0.20, pride: 0.70, valence: -0.10, arousal: -0.20, immersion: 0.10 }],
-  ['low_valence', { connection: 0.10, pride: 0.20, valence: -0.80, arousal: -0.50, immersion: 0.10 }],
-  ['high_arousal', { connection: 0.10, pride: 0.20, valence: 0.00, arousal: 0.80, immersion: 0.10 }],
-  ['default（兜底）', { connection: 0.10, pride: 0.20, valence: 0.00, arousal: 0.00, immersion: 0.10 }],
+  ['poise_block', { connection: 0.20, poise: 0.70, valence: -0.10, arousal: -0.20, immersion: 0.10 }],
+  ['low_valence', { connection: 0.10, poise: 0.20, valence: -0.80, arousal: -0.50, immersion: 0.10 }],
+  ['high_arousal', { connection: 0.10, poise: 0.20, valence: 0.00, arousal: 0.80, immersion: 0.10 }],
+  ['default（兜底）', { connection: 0.10, poise: 0.20, valence: 0.00, arousal: 0.00, immersion: 0.10 }],
 ]) {
   const key = reason.startsWith('default') ? 'default' : reason;
   block('reason = `' + reason + '`', st, 'find_activity', key);
@@ -122,14 +122,14 @@ for (const [reason, st] of [
 
 w('### 独处 + 有冲浪产物');
 w();
-w('正文换成产物切片，出口说明与 sceneOverride 正文都停用，尾句换成 `SURF_TAIL_LINE`。');
+w('正文换成产物切片，出口说明与 sceneOverride 正文都停用，尾句同其余块（`BOUNDARY_LINE`）。');
 w('描述层整段保留：段4 说**动作**（「刚才在上网冲浪。」），产物头说**结果**');
 w('（「搜到了一条有意思的内容：」）—— 两句维度不同，是"他干了什么 → 摸到了什么"的顺承。');
 w('⚠️ 别为了"防重复"在描述层加场景开关（加过一次，已撤）：重复是文案层的事。');
 w();
 {
   const st = {
-    connection: 0.42, pride: 0.65, valence: -0.05, arousal: 0.05,
+    connection: 0.42, poise: 0.65, valence: -0.05, arousal: 0.05,
     immersion: 0.40,
     lastActivity: { type: 'search', label: '上网冲浪', at: new Date().toISOString() },
   };
@@ -155,7 +155,7 @@ for (const it of cfg.describe.connection) {
   w(`| 1 连接 | ${label} | ${it.text} |`);
 }
 const PL = ['`< 0.00`', '`[0.00, 0.10)`', '`[0.10, 0.30)`', '`[0.30, 0.50)`', '`[0.50, 0.80)`', '`≥ 0.80`'];
-cfg.describe.pride.forEach((it, i) => w(`| 2 骄傲 | ${PL[i]} | ${it.text} |`));
+cfg.describe.poise.forEach((it, i) => w(`| 2 骄傲 | ${PL[i]} | ${it.text} |`));
 w(`| 3 心情 | \`v>0.3, a>0.3\` | ${cfg.describe.mood.excited} |`);
 w(`| 3 心情 | \`v<-0.3, a<-0.3\` | ${cfg.describe.mood.depressed} |`);
 w(`| 3 心情 | 其余象限 | （见 config） |`);
@@ -179,7 +179,7 @@ w('> 内置 `DEFAULT_URGENCY`（作者文案，风格与本部署不符）。');
 w();
 w('### 3.3 `contactOverride` —— 2026-10-08 已退役（键已删除）');
 w();
-w('原用途：`connection` 过线时顶掉由 `pride` 决定的基础档。退役原因：它把**整条 45 格**');
+w('原用途：`connection` 过线时顶掉由 `poise` 决定的基础档。退役原因：它把**整条 45 格**');
 w('一起顶掉了（只留「基调句 + 尾注」）。原文案留档 git 历史（`de0af31` 及之前）。');
 w();
 w('### 3.4 `sceneOverride.find_activity`');
@@ -193,7 +193,7 @@ w();
 w('### 3.6 档位行 —— 2026-10-08 已整条删除');
 w();
 w('原来这里是 `心情：X。姿态：X。心跳：X。想念：X。` 的四行取值表。');
-w('删除理由：四条各自 ≈ 45 格正文的某一维（心情←簇 / 姿态←pride 档 / 心跳←簇内 arousal /');
+w('删除理由：四条各自 ≈ 45 格正文的某一维（心情←簇 / 姿态←poise 档 / 心跳←簇内 arousal /');
 w('想念←urgency 尾注，同轴同阈值），属同义重复；且「想念」会重字成 `想念：想念。`、');
 w('「悠闲」是永不可达的死档。');
 w();

@@ -72,16 +72,16 @@ function pickSereinSrc() {
 // ── 构造语料 ────────────────────────────────────────
 // 取每个场景若干代表状态，覆盖 45 格与覆盖分支
 const REP_STATES = [
-  { cluster: 'neutral', connection: 0.42, pride: 0.20, valence: 0.0, arousal: 0.0, immersion: 0.1 },
-  { cluster: 'neutral', connection: 0.62, pride: 0.20, valence: 0.0, arousal: 0.0, immersion: 0.1 },
-  { cluster: 'pleased', connection: 0.42, pride: 0.65, valence: 0.5, arousal: 0.0, immersion: 0.1 },
-  { cluster: 'calm', connection: 0.10, pride: 0.90, valence: 0.0, arousal: -0.5, immersion: 0.1 },
-  { cluster: 'depressed', connection: 0.25, pride: -0.2, valence: -0.5, arousal: -0.5, immersion: 0.1 },
-  { cluster: 'excited', connection: 0.05, pride: 0.0, valence: 0.5, arousal: 0.5, immersion: 0.1 },
-  { cluster: 'agitated', connection: 0.30, pride: 0.40, valence: -0.5, arousal: 0.5, immersion: 0.1 },
-  { cluster: 'sullen', connection: 0.20, pride: 0.10, valence: -0.5, arousal: 0.0, immersion: 0.1 },
-  { cluster: 'restless', connection: 0.15, pride: 0.30, valence: 0.0, arousal: 0.5, immersion: 0.1 },
-  { cluster: 'content', connection: 0.45, pride: 0.55, valence: 0.5, arousal: -0.5, immersion: 0.1 },
+  { cluster: 'neutral', connection: 0.42, poise: 0.20, valence: 0.0, arousal: 0.0, immersion: 0.1 },
+  { cluster: 'neutral', connection: 0.62, poise: 0.20, valence: 0.0, arousal: 0.0, immersion: 0.1 },
+  { cluster: 'pleased', connection: 0.42, poise: 0.65, valence: 0.5, arousal: 0.0, immersion: 0.1 },
+  { cluster: 'calm', connection: 0.10, poise: 0.90, valence: 0.0, arousal: -0.5, immersion: 0.1 },
+  { cluster: 'depressed', connection: 0.25, poise: -0.2, valence: -0.5, arousal: -0.5, immersion: 0.1 },
+  { cluster: 'excited', connection: 0.05, poise: 0.0, valence: 0.5, arousal: 0.5, immersion: 0.1 },
+  { cluster: 'agitated', connection: 0.30, poise: 0.40, valence: -0.5, arousal: 0.5, immersion: 0.1 },
+  { cluster: 'sullen', connection: 0.20, poise: 0.10, valence: -0.5, arousal: 0.0, immersion: 0.1 },
+  { cluster: 'restless', connection: 0.15, poise: 0.30, valence: 0.0, arousal: 0.5, immersion: 0.1 },
+  { cluster: 'content', connection: 0.45, poise: 0.55, valence: 0.5, arousal: -0.5, immersion: 0.1 },
 ];
 
 const blocks = [];
@@ -89,7 +89,7 @@ for (const st of REP_STATES) {
   blocks.push(['此刻/' + st.cluster, buildInjectionBlock(st, tg)]);
   blocks.push(['找她/' + st.cluster,
     buildProactiveNotice(st, tg, { scene: 'contact' }, cfg.sceneOverride, cfg.proactiveOutlet)]);
-  for (const reason of ['pride_block', 'low_valence', 'high_arousal', 'default']) {
+  for (const reason of ['poise_block', 'low_valence', 'high_arousal', 'default']) {
     blocks.push(['独处/' + reason,
       buildProactiveNotice(st, tg, { scene: 'find_activity', reason }, cfg.sceneOverride, cfg.proactiveOutlet)]);
   }
