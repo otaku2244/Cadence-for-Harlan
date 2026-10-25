@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 // ════════════════════════════════════════════════════════════════
-//  jiwen-bridge · 积温注入桥
+//  cadence-bridge · 潮汐基频注入桥
 //
-//  定位：Serein 网关前面的一层反向代理。用户在 Operit/OMate 发消息
-//        → 桥 → 注入【积温·此刻】块 → Serein → 上游模型。
+//  定位：Lattice 网关前面的一层反向代理。用户在 Operit/OMate 发消息
+//        → 桥 → 注入【潮汐基频·此刻】块 → Lattice → 上游模型。
 //
 //  设计原则：
-//    · Serein 零改动。桥只做转发 + 改写请求体。
-//    · 积温引擎不改一行。全部通过 createJiwen(opts) 注入。
+//    · Lattice 零改动。桥只做转发 + 改写请求体。
+//    · 潮汐基频引擎不改一行。全部通过 createCadence(opts) 注入。
 //    · 状态全局单实例（不按窗口分）。窗口只影响判定器取哪 4 条历史。
 //    · 任何窗口的任何用户消息都触发 resetConnection。
 //
-//  依赖：只用 Node 内置模块（http/https/fs/path/url）+ vendor 下的积温。
+//  依赖：只用 Node 内置模块（http/https/fs/path/url）+ vendor 下的潮汐基频。
 // ════════════════════════════════════════════════════════════════
 
 'use strict';
@@ -34,10 +34,10 @@ const { loadEnvFile } = require('./lib/env.js');
 const envPath = require('path').join(__dirname, '.env');
 loadEnvFile(envPath);
 
-const { createJiwen } = require('./vendor/jiwen.js');
+const { createCadence } = require('./vendor/cadence.js');
 const { createToneGrid } = require('./vendor/tone-grid.js');
 const { createDescriber } = require('./lib/describe.js');
-const { buildInjectionBlock, buildProactiveNotice, stripJiwenBlocks, assertBlockShape } = require('./lib/inject-text.js');
+const { buildInjectionBlock, buildProactiveNotice, stripCadenceBlocks, assertBlockShape } = require('./lib/inject-text.js');
 const { createLoopbackGuard } = require('./lib/loopback.js');
 const { createSceneCooldown, createDialogDedup } = require('./lib/repeat-guard.js');
 const { analyzeDialog } = require('./lib/analyzer.js');
@@ -117,7 +117,7 @@ const CFG = {
   // find_activity 有两条独立入口：
   //   ① 「自持」 c∈[0.35,0.50) 且 poise≥0.5（poise_block）
   //   ② 「心情低」valence ≤ valenceActivity 且 immersion<0.3（low_valence）
-  // ② **完全不看 connection**（vendor/jiwen.js:507）。
+  // ② **完全不看 connection**（vendor/cadence.js:507）。
   //
   // vendor 把 ② 的阈值默认成 -1.0（永不触发），于是 find_activity 只能靠 ①。
   // 而 ① 要求 poise 长期顶格 0.5 —— 实测她整日不出现时，poise≥0.5 占醒着的
@@ -136,7 +136,7 @@ const CFG = {
   //    且有 0.01 下限（防止清零导致阈值永不触达）。
   activityConnectionRelief: parseFloat(process.env.ACTIVITY_CONNECTION_RELIEF || '0'),
   // ── 沉降路：connection 驱动的 valence 漂移（vendor 原生「改2」，默认关）──
-  // vendor/jiwen.js:339 —— drift = rate × mins × connection。
+  // vendor/cadence.js:339 —— drift = rate × mins × connection。
   //
   // ⚠️⚠️ 2026-10-10 实测结论：**不要用这个参数做提速**。⚠️⚠️
   //   它是开关型，没有中间档（48h 实测，c 涨到饱和）：
@@ -166,6 +166,15 @@ const CFG = {
   surfFindingPath: process.env.SURF_FINDING_PATH || '/surf/finding',
 };
 
+// MCP 端点路径：主路径来自 .env 的 MCP_PATH（现为 /cadence/mcp），
+// 另保留无前缀的 /mcp 作为兼容（与 Lattice 网关的 /lattice/mcp + /mcp 一致）。
+const MCP_PATH_SET = new Set([
+  CFG.mcpPath,
+  CFG.mcpPath.replace(/\/$/, '') + '/',
+  '/mcp',
+  '/mcp/',
+]);
+
 // ── 时间（业务时区）──────────────────────────────
 // 日志时间戳一律走 toISOString()（UTC，ISO 8601 标准，排查无歧义）；
 // 只有「静默时段」「日上限跨天」这类业务判断才用业务时区。
@@ -187,7 +196,7 @@ function log(level, msg) {
 }
 
 // ── 状态持久化 ────────────────────────────────────
-// 中性初值：积温上游 DEFAULT_STATE 用 axes[x][0] 作初值（poise/valence/arousal 都是 -1），
+// 中性初值：潮汐基频上游 DEFAULT_STATE 用 axes[x][0] 作初值（poise/valence/arousal 都是 -1），
 // 那会让角色开局就"糟透了"。这里通过 onLoad 返回中性初值绕过，不改 vendor 源码。
 const NEUTRAL_SEED = {
   connection: 0,
@@ -219,7 +228,7 @@ function loadState() {
     log('WARN', 'state load failed, using neutral seed: ' + e.message);
   }
   // 首次启动：必须返回中性种子。
-  // 积温 vendor 的 onLoad 返回 null 时会保留 DEFAULT_STATE，
+  // 潮汐基频 vendor 的 onLoad 返回 null 时会保留 DEFAULT_STATE，
   // 而 DEFAULT_STATE 用 axes[x][0] 作初值（poise/valence/arousal 全为 -1），
   // 会让角色开局就是"糟透了"。这里显式给出中性值绕过。
   return { ...NEUTRAL_SEED };
@@ -258,6 +267,11 @@ let toneGrid = null;
 let describer = null;
 let SCENE_OVERRIDE = {};
 let PROACTIVE_OUTLET = {};
+// 主动唤醒正文是否拼 27 格状态语调（2026-10-25 用户拍板：关）。
+// 由 config/tone-harlan.json 的 `proactiveStyle.enabled` 驱动，默认关；
+// 置 true 即恢复旧行为（正文 = 27 格那一格 + 出口说明）。
+// 此刻块（reactive）不受影响，它走 buildInjectionBlock → getStyleGuidance。
+let PROACTIVE_STYLE = false;
 // ── 档位归一化（2026-10-23）────────────────────────────────────────
 // config 现在只保留 poise 档 1~3（档4/5 实测占比 0.0%，已删，45 格 → 27 格）。
 // ⚠️ 但 vendor 的 mergeProfiles 是「DEFAULT_PROFILES ← overrides」的浅合并：
@@ -291,6 +305,7 @@ try {
   describer = createDescriber(toneCfg.describe);
   SCENE_OVERRIDE = toneCfg.sceneOverride || {};
   PROACTIVE_OUTLET = toneCfg.proactiveOutlet || {};
+  PROACTIVE_STYLE = !!(toneCfg.proactiveStyle && toneCfg.proactiveStyle.enabled === true);
   // 格数以 config 实际键数为准（这里报 27；运行时是 45 —— 补满的 4/5 复用档3文案）。
   let cfgCells = 0;
   for (const cluster of Object.keys(toneCfg.profiles)) cfgCells += Object.keys(toneCfg.profiles[cluster]).length;
@@ -331,7 +346,7 @@ let _lastDedupSkipKey = null;
 // 判定成功时不许调 —— 那时降幅已经在 delta 的 connection 分量里，
 // 再补一次就是重复扣减。
 function replyRelief(reason) {
-  jiwen.applyDelta({ connection: -CFG.connectionRelief })
+  cadence.applyDelta({ connection: -CFG.connectionRelief })
     .then(() => log('INFO', `reply relief: -${CFG.connectionRelief} (${reason})`))
     .catch((e) => log('WARN', 'reply relief failed: ' + e.message));
 }
@@ -355,8 +370,8 @@ try {
   log('WARN', 'cooldown restore failed: ' + e.message);
 }
 
-// ── 积温实例（全局唯一）──────────────────────────
-const jiwen = createJiwen({
+// ── 潮汐基频实例（全局唯一）──────────────────────────
+const cadence = createCadence({
   getLastMessage: () => null, // 桥不依赖此回调，由判定器独立取历史
   connectionRateFn: () => CFG.connectionRate,
   onSave: async (s) => { saveState(s); scheduleFlush(); },
@@ -385,7 +400,7 @@ const jiwen = createJiwen({
     valenceActivity: CFG.valenceActivityThreshold,
   },
   verbose: false,
-  onLog: (msg) => log('JIWEN', msg),
+  onLog: (msg) => log('CADENCE', msg),
 });
 
 // ── 注入节流 ──
@@ -393,7 +408,7 @@ const jiwen = createJiwen({
 // 为什么不能只比 block 文本：
 //   block 是渲染后的档位词（"中性""平静"…），粒度远粗于五轴原值。
 //   valence 从 0 漂到 -0.03 仍是"中性"，文本一字不变 → 判为"没变" → 不注入。
-//   结果是积温明明在动、模型却看不到，30 分钟内只有第一轮带块。
+//   结果是潮汐基频明明在动、模型却看不到，30 分钟内只有第一轮带块。
 //
 // 所以指纹取**数值**而非文本：四轴各取 2 位小数拼成签名。
 //   · 签名变了 → 注入（哪怕渲染文本相同，状态语义已经不同）
@@ -419,7 +434,7 @@ function shouldInject(block, state) {
   return false;
 }
 
-// ── 请求体改写：把积温块拼进最后一条 user 消息 ────
+// ── 请求体改写：把潮汐基频块拼进最后一条 user 消息 ────
 function injectIntoBody(body, block) {
   if (!body || !Array.isArray(body.messages) || body.messages.length === 0) {
     return { body, injected: false };
@@ -468,10 +483,10 @@ function extractRecentDialog(body, n) {
     else if (Array.isArray(m.content)) {
       text = m.content.filter((p) => p && p.type === 'text').map((p) => p.text).join('\n');
     }
-    // ⚠️ 必须剥掉积温块再入队。
-    //    积温块是拼进 user 正文的，不剥就等于让判定器读自己上一轮的输出，
+    // ⚠️ 必须剥掉潮汐基频块再入队。
+    //    潮汐基频块是拼进 user 正文的，不剥就等于让判定器读自己上一轮的输出，
     //    形成"状态 → 文本 → 判定器 → 状态"的自我锚定闭环。
-    text = stripJiwenBlocks(text);
+    text = stripCadenceBlocks(text);
     if (!text) continue;
     out.push({ role: m.role, text: text.slice(0, 800) });
   }
@@ -497,7 +512,7 @@ function forward(pathname, search, method, headers, bodyBuf, res) {
   delete outHeaders['host'];
   delete outHeaders['content-length'];
   delete outHeaders['authorization'];
-  // 用 Serein 自己的 Gateway Key 覆盖（Operit 给的是桥的 token）
+  // 用 Lattice 自己的 Gateway Key 覆盖（Operit 给的是桥的 token）
   if (CFG.upstreamToken) outHeaders['authorization'] = 'Bearer ' + CFG.upstreamToken;
   if (bodyBuf) outHeaders['content-length'] = Buffer.byteLength(bodyBuf);
 
@@ -536,7 +551,7 @@ const server = http.createServer((req, res) => {  const u = new URL(req.url, 'ht
   // 健康检查
   if (u.pathname === '/bridge/health') {
     res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', engine: 'jiwen-bridge', version: '1.0.0' }));
+    res.end(JSON.stringify({ status: 'ok', engine: 'cadence-bridge', version: '1.0.0' }));
     return;
   }
 
@@ -583,7 +598,7 @@ const server = http.createServer((req, res) => {  const u = new URL(req.url, 'ht
         const finding = ok ? {
           title: payload.title, url: payload.url, image: payload.image, note: payload.note,
         } : null;
-        const st = await jiwen.getState();
+        const st = await cadence.getState();
         const notice = buildProactiveNotice(st, toneGrid, {
           scene: 'find_activity', reason: 'surf', finding, failure,
         }, SCENE_OVERRIDE, PROACTIVE_OUTLET, describer);
@@ -601,7 +616,7 @@ const server = http.createServer((req, res) => {  const u = new URL(req.url, 'ht
 
     // ── MCP 端点（Streamable HTTP）──
     // 与聊天转发互不干扰：只认这一个路径，其余原样走代理逻辑。
-    if (mcp && u.pathname === CFG.mcpPath) {
+    if (mcp && MCP_PATH_SET.has(u.pathname)) {
       try {
         await mcp.handleHttp(req, res, bodyBuf, true);
       } catch (e) {
@@ -639,8 +654,8 @@ const server = http.createServer((req, res) => {  const u = new URL(req.url, 'ht
     //
     //   作者原设计：对方回复带来的 connection 降幅，由 LLM 读这轮对话内容决定，
     //   不是"回复即归零"。
-    //     vendor/jiwen.js:41   connectionOnReply 已标 [已弃用]「现由 LLM delta 接管」
-    //     vendor/jiwen.js:277  「连接需求降幅现由外部 LLM 分析…通过 applyDelta 注入」
+    //     vendor/cadence.js:41   connectionOnReply 已标 [已弃用]「现由 LLM delta 接管」
+    //     vendor/cadence.js:277  「连接需求降幅现由外部 LLM 分析…通过 applyDelta 注入」
     //
     //   桥原先在这里调 resetConnection()（= state.connection 硬置 0）。两处损害：
     //     ① 把她"开口但敷衍"这个中间态一起抹掉 —— 敷衍本该让 c 上升；
@@ -655,7 +670,7 @@ const server = http.createServer((req, res) => {  const u = new URL(req.url, 'ht
     let state = {};
     let block = '';
     try {
-      state = await jiwen.getState();
+      state = await cadence.getState();
       block = buildInjectionBlock(state, toneGrid, describer);
     } catch (e) {
       log('WARN', 'build block failed: ' + e.message);
@@ -663,12 +678,12 @@ const server = http.createServer((req, res) => {  const u = new URL(req.url, 'ht
 
     // ── 3. 判定器输入：必须在注入之前取 ──
     //   injectIntoBody 会直接改写最后一条 user 消息；若先注入再取，
-    //   判定器读到的就是"这份积温块 + 她的真话"，等于拿自己的输出喂自己。
+    //   判定器读到的就是"这份潮汐基频块 + 她的真话"，等于拿自己的输出喂自己。
     const dialog = extractRecentDialog(body, 4);
 
-    // ── 3b. 跨系统契约守卫（与 Serein 的切割线）──
-    //   积温块一旦成型，Serein 见到【积温·X】就进跳过态，**只有末行尾标记能让它出来**。
-    //   末行不对（改了措辞没同步 Serein / 块被截断）→ 紧随其后的她的原话被整段吞掉。
+    // ── 3b. 跨系统契约守卫（与 Lattice 的切割线）──
+    //   潮汐基频块一旦成型，Lattice 见到【潮汐基频·X】就进跳过态，**只有末行尾标记能让它出来**。
+    //   末行不对（改了措辞没同步 Lattice / 块被截断）→ 紧随其后的她的原话被整段吞掉。
     //   所以：形状不合规就宁可不注入，也不能发出去。
     if (block) {
       const shapeProblems = assertBlockShape(block);
@@ -702,7 +717,7 @@ const server = http.createServer((req, res) => {  const u = new URL(req.url, 'ht
       ? ` LOOPBACK=${loopback.scene} age=${Math.round((Date.now() - loopback.at) / 1000)}s n=${loopback.claims}`
       : '';
     const skipTag = (block && loopback) ? ' SKIP_INJECT=loopback' : '';
-    log('INFO', `inject=${injected} win=${req.headers['x-serein-window-id'] || 'main'}${loopTag}${skipTag} | ${jiwen.getStateSummary()}`);
+    log('INFO', `inject=${injected} win=${req.headers['x-lattice-window-id'] || 'main'}${loopTag}${skipTag} | ${cadence.getStateSummary()}`);
 
     // ── 5. 异步喂判定器（不阻塞转发；仅真人开口才喂）──
     // ⚠️ 必须按"轮次"去重：模型调工具后 Operit 会用同一份 messages 再发一次请求，
@@ -730,7 +745,7 @@ const server = http.createServer((req, res) => {  const u = new URL(req.url, 'ht
         setImmediate(() => {
           analyzeDialog(dialog, { ...CFG, log }).then((delta) => {
             if (delta) {
-              jiwen.applyDelta(delta).catch((e) => log('WARN', 'applyDelta failed: ' + e.message));
+              cadence.applyDelta(delta).catch((e) => log('WARN', 'applyDelta failed: ' + e.message));
               log('INFO', 'delta applied: ' + JSON.stringify(delta));
             } else {
               replyRelief('analyzer returned empty');
@@ -764,8 +779,8 @@ function logCooldownSkip(scene) {
 }
 async function tickOnce() {
   try {
-    const triggers = await jiwen.tick(CFG.tickMinutes);
-    const st = await jiwen.getState();
+    const triggers = await cadence.tick(CFG.tickMinutes);
+    const st = await cadence.getState();
     // observation 是上游原生的"内心念头"信号，每 tick 都可能触发。
     // 按 Harlan 人设（不碎碎念、不报备），它不投递、也不逐条刷日志；
     // 只在状态摘要变化或发生真正动作时打一条。
@@ -773,7 +788,7 @@ async function tickOnce() {
     const now = Date.now();
     if (actionable.length || (now - _lastTickLog) > 30 * 60 * 1000) {
       _lastTickLog = now;
-      log('TICK', `${CFG.tickMinutes}min | ${jiwen.getStateSummary()}` +
+      log('TICK', `${CFG.tickMinutes}min | ${cadence.getStateSummary()}` +
         (actionable.length ? ` | 动作: ${actionable.map((t) => t.action).join(',')}` : ''));
     }
     if (!CFG.proactiveEnabled) return;
@@ -782,7 +797,7 @@ async function tickOnce() {
         // 冷却：contact 天然不重复（触发后 connection 归零），但"她整日不来"时
         // 一天能触发 4 次以上，统一纳管避免与 find_activity 抢日上限时失去约束。
         if (!actionCooldown.ok('contact')) { logCooldownSkip('contact'); continue; }
-        const notice = buildProactiveNotice(st, toneGrid, { scene: 'contact' }, SCENE_OVERRIDE, PROACTIVE_OUTLET, describer);
+        const notice = buildProactiveNotice(st, toneGrid, { scene: 'contact', style: PROACTIVE_STYLE }, SCENE_OVERRIDE, PROACTIVE_OUTLET, describer);
         const sent = await fireProactive(notice, st, { scene: 'contact' });
         // ⚠️ 只有**真投出去**才记账、才缓解。两者必须同进同出。
         //
@@ -798,7 +813,7 @@ async function tickOnce() {
         if (sent) {
           actionCooldown.mark('contact');
           // 开口 ≠ 被回复：部分缓解（原语义）
-          await jiwen.applyDelta({ connection: -0.35 });
+          await cadence.applyDelta({ connection: -0.35 });
         }
       } // [CUT-FIND-ACTIVITY 2026-10-10]
         // 原 else if (t.action === 'find_activity') 消费分支已整段删除。
@@ -850,7 +865,7 @@ function spawnSurf(reason) {
   log('INFO', `surf spawning (reason=${reason || 'unknown'}, entry=${entry})`);
   const child = spawn(CFG.surfNodeBin, [entry, '--once'], {
     cwd: CFG.surfDir,
-    // 关键：surf 必须走 jiwen 通道回投，且不能自主排期（那是 --once 保证的）。
+    // 关键：surf 必须走 cadence 通道回投，且不能自主排期（那是 --once 保证的）。
     env: {
       ...process.env,
       // 显式覆盖：桥的 .env 里也有 STATE_FILE / LLM_DISABLE_THINKING，
@@ -859,9 +874,9 @@ function spawnSurf(reason) {
       STATE_FILE: path.join(CFG.surfDir, 'data', 'state.json'),
       LLM_DISABLE_THINKING: 'true',
       AUTO_SCHEDULE: 'false',
-      DELIVERY_CHANNEL: 'jiwen',
-      JIWEN_BASE_URL: `http://127.0.0.1:${CFG.port}`,
-      JIWEN_TOKEN: CFG.token,
+      DELIVERY_CHANNEL: 'cadence',
+      CADENCE_BASE_URL: `http://127.0.0.1:${CFG.port}`,
+      CADENCE_TOKEN: CFG.token,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -895,7 +910,7 @@ async function fireProactive(notice, state, meta) {
   }
   if (!checkDailyLimit()) { log('INFO', 'proactive blocked by daily limit'); return false; }
 
-  // 同样的跨系统契约：通知最终会经 Operit 落进对话、再回流到 Serein 的归档路径。
+  // 同样的跨系统契约：通知最终会经 Operit 落进对话、再回流到 Lattice 的归档路径。
   // 末行不对 → 它后面她的话会被整段吞掉。形状不合规就不发。
   const shapeProblems = assertBlockShape(notice);
   if (shapeProblems.length) {
@@ -922,7 +937,7 @@ async function fireProactive(notice, state, meta) {
       reason: (meta && meta.reason) || null,
       at: new Date().toISOString(),
       notice,
-      stateSummary: jiwen.getStateSummary(),
+      stateSummary: cadence.getStateSummary(),
     });
     log('INFO', `proactive queued for MCP pull (pending=${mcp.pendingCount()})`);
   }
@@ -934,7 +949,7 @@ async function fireProactive(notice, state, meta) {
     const u = new URL(CFG.proactiveWebhook);
     const lib = u.protocol === 'https:' ? https : http;
     const payload = Buffer.from(JSON.stringify({
-      protocol: 'jiwen-wake/1',
+      protocol: 'cadence-wake/1',
       reason: 'proactive',
       message: notice,
       state: { connection: state.connection, poise: state.poise, valence: state.valence, arousal: state.arousal },
@@ -957,10 +972,10 @@ async function fireProactive(notice, state, meta) {
 
 // ── MCP 服务（给 Operit 工作流"拉"通知用）─────────
 const mcp = CFG.mcpEnabled ? createMcpHandler({
-  getSummary: () => jiwen.getStateSummary(),
-  getState: () => jiwen.getState(),
-  getTrace: () => jiwen.getTriggerTrace(),
-  explain: () => jiwen.explainTrigger(),
+  getSummary: () => cadence.getStateSummary(),
+  getState: () => cadence.getState(),
+  getTrace: () => cadence.getTriggerTrace(),
+  explain: () => cadence.explainTrigger(),
   getRuntimeInfo: () => ({
     proactive_enabled: CFG.proactiveEnabled,
     in_quiet_hours: inQuietHours(),
@@ -983,9 +998,9 @@ const mcp = CFG.mcpEnabled ? createMcpHandler({
 
 // ── 启动 ──────────────────────────────────────────
 (async () => {
-  await jiwen.load();
-  const st = await jiwen.getState();
-  log('INFO', `jiwen loaded: ${jiwen.getStateSummary()}`);
+  await cadence.load();
+  const st = await cadence.getState();
+  log('INFO', `cadence loaded: ${cadence.getStateSummary()}`);
 
   server.listen(CFG.port, CFG.host, () => {
     log('INFO', `bridge listening on ${CFG.host}:${CFG.port} → ${CFG.upstreamBase}`);
@@ -995,7 +1010,7 @@ const mcp = CFG.mcpEnabled ? createMcpHandler({
       `(tz+${CFG.tzOffsetHours}) cooldown=${CFG.actionCooldownMinutes}min` +
       ` analyzerDedup=${CFG.analyzeDedupSeconds}s`);
     log('INFO', `poiseDefend: threshold=${CFG.poiseDefendThreshold} rate=${CFG.poiseDefendRate}` +
-      ` (vendor 默认 1.0/0.003 = find_activity 永不触发)`);
+      ` (vendor 默认 1.0/0.003 = 永不触发；本部署用于驱动 27 格档位，poise 上限 0.5 = 档3)`);
     log('INFO', `arousalRise: threshold=${CFG.arousalConnectionRiseThreshold}` +
       ` rate=${CFG.arousalConnectionRiseRate}` +
       (CFG.arousalConnectionRiseThreshold >= 1
