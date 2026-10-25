@@ -1,6 +1,6 @@
 'use strict';
 // 打印「模型实际看到的注入块」——按给定状态渲染。
-// 用法（在 jiwen-bridge 目录下）: node _test/show_inject.js
+// 用法（在 cadence-bridge 目录下）: node _test/show_inject.js
 //
 // 目的：验证簇名（pleased / content / …）到底有没有进入模型可见文本。
 // 构造与 bridge.js 完全一致：createToneGrid({profiles, urgencyBoost})

@@ -12,7 +12,7 @@
 // 跑法：node _test/scan_rhythm.js
 // ════════════════════════════════════════════════════
 
-const { createJiwen } = require('../vendor/jiwen.js');
+const { createCadence } = require('../vendor/cadence.js');
 
 let VNOW = new Date('2026-10-05T00:00:00+08:00').getTime();
 const RealDate = Date;
@@ -79,7 +79,7 @@ const CASES = [
 async function runOne(cfg, patternFn) {
   const t0 = VNOW;
   let store = null;
-  const j = createJiwen({
+  const j = createCadence({
     getLastMessage: () => ({ id: 1, content: 'x', timestamp: new RealDate(VNOW - 86400000).toISOString() }),
     connectionRateFn: () => cfg.rate,
     onSave: async (s) => { store = s; },

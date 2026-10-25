@@ -14,7 +14,7 @@
 // 跑法：node _test/scan_activity.js
 // ════════════════════════════════════════════════════
 
-const { createJiwen } = require('../vendor/jiwen.js');
+const { createCadence } = require('../vendor/cadence.js');
 
 // ── 虚拟时钟 ──
 let VNOW = new Date('2026-10-05T00:00:00+08:00').getTime();
@@ -51,7 +51,7 @@ const PATTERNS = [
 async function runOne(cfg, patternFn) {
   let store = null;
   let lastMsgAt = VNOW;
-  const j = createJiwen({
+  const j = createCadence({
     getLastMessage: () => ({ id: 1, content: 'x', timestamp: new RealDate(lastMsgAt).toISOString() }),
     connectionRateFn: () => RATE,
     onSave: async (s) => { store = JSON.parse(JSON.stringify(s)); },

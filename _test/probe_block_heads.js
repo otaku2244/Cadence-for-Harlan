@@ -2,7 +2,7 @@
 // 块头统一 + 主动唤醒三条路径文案对照
 //
 // 背景（用户 2026-10-07 要求）：
-//   ① 块头不再按场景区分，三个场景统一用【积温·此刻】。
+//   ① 块头不再按场景区分，三个场景统一用【潮汐基频·此刻】。
 //   ② 复核 find_activity 走冲浪（surf）时呈现的文案，与不走冲浪时应有什么不同。
 //
 // 本脚本用**生产配置 + 生产函数**渲染，不手抄任何文案。
@@ -11,7 +11,7 @@
 const fs = require('fs');
 const path = require('path');
 const {
-  buildInjectionBlock, buildProactiveNotice, stripJiwenBlocks,
+  buildInjectionBlock, buildProactiveNotice, stripCadenceBlocks,
   assertBlockShape, SCENE_TAG, BOUNDARY_LINE,
 } = require('../lib/inject-text.js');
 const { createToneGrid } = require('../vendor/tone-grid.js');
@@ -52,7 +52,7 @@ const CASES = [
   ['独处 · surf 失败兜底', () => bN(S({ connection: 0.23 }), tg, { scene: 'find_activity', reason: 'surf', failure: '没翻出什么合适的（超时）。' }, cfg.sceneOverride, cfg.proactiveOutlet)],
 ];
 
-// 模拟手机侧搬运脚本的压平（jiwen_pull.js: notice.replace(/\r?\n+/g,' ')）
+// 模拟手机侧搬运脚本的压平（cadence_pull.js: notice.replace(/\r?\n+/g,' ')）
 const flatten = (s) => String(s).replace(/\r?\n+/g, ' ').trim();
 
 function renderAll() {
@@ -98,7 +98,7 @@ for (const r of asIs) {
 }
 
 // ── 二、统一块头 ──
-w('## 二、块头统一为【积温·此刻】之后（现行；只改首行，其余逐字不变）');
+w('## 二、块头统一为【潮汐基频·此刻】之后（现行；只改首行，其余逐字不变）');
 w('');
 w('| 用例 | 原块头 | 统一后 | 首行以外是否变化 |');
 w('|---|---|---|---|');
@@ -109,13 +109,13 @@ for (let i = 0; i < unified.length; i++) {
   w(`| ${b.label} | \`${a.first}\` | \`${b.first}\` | ${same ? '否' : '**是**'} |`);
 }
 w('');
-w('形状自检（`assertBlockShape`）+ 剥离自检（`stripJiwenBlocks`）：');
+w('形状自检（`assertBlockShape`）+ 剥离自检（`stripCadenceBlocks`）：');
 w('');
 w('| 用例 | 形状 | 剥离后残留 |');
 w('|---|---|---|');
 for (const b of unified) {
   const her = b.block + '\n她说了一句题外话。';
-  const stripped = stripJiwenBlocks(her);
+  const stripped = stripCadenceBlocks(her);
   w(`| ${b.label} | ${b.problems.length ? '❌ ' + b.problems.join('; ') : '✅ 合规'} | ${stripped === '她说了一句题外话。' ? '✅ 干净' : '❌ ' + JSON.stringify(stripped.slice(0, 60))} |`);
 }
 w('');
@@ -152,7 +152,7 @@ for (const [label, blk] of table) {
 }
 
 // ── 四、压平后注入给模型的形态 ──
-w('## 四、手机侧搬运脚本压平后的形态（`jiwen_pull.js` 把换行换成空格）');
+w('## 四、手机侧搬运脚本压平后的形态（`cadence_pull.js` 把换行换成空格）');
 w('');
 for (const [label, blk] of table) {
   w('### ' + label);
@@ -163,11 +163,11 @@ for (const [label, blk] of table) {
 }
 
 // ── 五、判定器读路径的剥离（回流时） ──
-w('## 五、回流时判定器/归档看到的（`stripJiwenBlocks` 剥掉整块）');
+w('## 五、回流时判定器/归档看到的（`stripCadenceBlocks` 剥掉整块）');
 w('');
 for (const [label, blk] of table) {
   const mixed = blk + '\n她：在吗';
-  w(`- ${label} → ${JSON.stringify(stripJiwenBlocks(mixed))}`);
+  w(`- ${label} → ${JSON.stringify(stripCadenceBlocks(mixed))}`);
 }
 w('');
 

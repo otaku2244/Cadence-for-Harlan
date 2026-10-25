@@ -8,7 +8,7 @@ const { createMcpHandler } = require('../lib/mcp.js');
 
 // ── 桩：模拟 bridge 提供的依赖 ──
 const stub = {
-  getSummary: () => '[积温] c:0.42(想念) p:0.55(收着) v:-0.20(中性) a:0.30(平静) i:0.00(空闲) | userStatus: active',
+  getSummary: () => '[潮汐基频] c:0.42(想念) p:0.55(收着) v:-0.20(中性) a:0.30(平静) i:0.00(空闲) | userStatus: active',
   getState: async () => ({ connection: 0.42, poise: 0.55, valence: -0.2, arousal: 0.3, immersion: 0 }),
   getTrace: () => ([
     { gate: '开口', fired: false, reason: 'poise 挡住开口，immersion 又缓冲住了（没转成找事做）',
@@ -69,7 +69,7 @@ async function call(payload, opts) {
     const { json } = await call({ jsonrpc: '2.0', id: 1, method: 'initialize',
       params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'operit', version: '1' } } });
     check('① initialize 返回 serverInfo', json && json.result && json.result.serverInfo &&
-      json.result.serverInfo.name === 'jiwen-bridge', json);
+      json.result.serverInfo.name === 'cadence-bridge', json);
     check('① initialize 声明 tools 能力', json && json.result && json.result.capabilities &&
       json.result.capabilities.tools, json && json.result);
     check('① initialize 回显 protocolVersion', json && json.result &&
@@ -100,10 +100,10 @@ async function call(payload, opts) {
   // ④ 入队 → 取走 → 再取为空
   {
     mcp.pushNotice({ scene: 'contact', reason: null, at: '2026-10-05T00:00:00.000Z',
-      notice: '【积温·找她】\n心情：中性。\n以上是内在心绪和潜意识的自然流露，切勿对她复述或提及此状态。',
+      notice: '【潮汐基频·找她】\n心情：中性。\n以上是内在心绪和潜意识的自然流露，切勿对她复述或提及此状态。',
       stateSummary: stub.getSummary() });
     mcp.pushNotice({ scene: 'find_activity', reason: 'poise_block', at: '2026-10-05T00:05:00.000Z',
-      notice: '【积温·独处】\n心情：中性。\n以上是内在心绪和潜意识的自然流露，切勿对她复述或提及此状态。',
+      notice: '【潮汐基频·独处】\n心情：中性。\n以上是内在心绪和潜意识的自然流露，切勿对她复述或提及此状态。',
       stateSummary: stub.getSummary() });
     check('④ 入队后 pendingCount=2', mcp.pendingCount() === 2, mcp.pendingCount());
 
@@ -122,7 +122,7 @@ async function call(payload, opts) {
     check('④ reason / at / notice 三者同源，都属于被选中那条',
       parsed.reason === 'poise_block'
       && parsed.at === '2026-10-05T00:05:00.000Z'
-      && parsed.notice.includes('【积温·独处】'),
+      && parsed.notice.includes('【潮汐基频·独处】'),
       { reason: parsed.reason, at: parsed.at, head: String(parsed.notice).slice(0, 12) });
     check('④ additional 里剩下的是更早那条（contact）',
       parsed.additional.length === 1 && parsed.additional[0].scene === 'contact',
@@ -274,7 +274,7 @@ async function call(payload, opts) {
     check('⑱ 禁用缓冲（x-accel-buffering）',
       !!(res.headers && res.headers['x-accel-buffering'] === 'no'), res.headers);
     check('⑱ 未立刻结束（保持长连接）', res.ended === false, res.ended);
-    check('⑱ 建流即写入 SSE 注释帧', res.stream().includes(': jiwen-bridge MCP stream open'),
+    check('⑱ 建流即写入 SSE 注释帧', res.stream().includes(': cadence-bridge MCP stream open'),
       res.stream().slice(0, 60));
     check('⑱ 活跃流计数为 1', mcp.activeStreams() === 1, mcp.activeStreams());
 

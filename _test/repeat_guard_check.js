@@ -212,7 +212,7 @@ ok('C23 MCP runtime 暴露 cooldown_left_minutes', src.includes('cooldown_left_m
 // ⚠️ 回归守护：vendor 一行不动
 {
   const fs2 = require('fs');
-  const v = fs2.readFileSync(path.join(__dirname, '..', 'vendor', 'jiwen.js'), 'utf8');
+  const v = fs2.readFileSync(path.join(__dirname, '..', 'vendor', 'cadence.js'), 'utf8');
   ok('C24 vendor 仍以哨兵值作默认（说明我们没改 vendor）',
     v.includes('poiseDefendThreshold: 1.0,') && v.includes('valenceActivity:   -1.0,'));
 }

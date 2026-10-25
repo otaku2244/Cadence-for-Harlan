@@ -1,7 +1,7 @@
-# 积温桥 · 交付说明
+# 潮汐基频桥 · 交付说明
 
-> 把 [积温 jiwen](https://github.com/ClaraShafiq/jiwen)（MIT，零依赖 JS 五轴情绪引擎）接到 Serein 上，让 Harlan 在每次回复时带上"现在什么心情"。
-> **Serein 零改动。积温源码零改动。**
+> 把 [潮汐基频 cadence](https://github.com/ClaraShafiq/cadence)（MIT，零依赖 JS 五轴情绪引擎）接到 Lattice 上，让 Harlan 在每次回复时带上"现在什么心情"。
+> **Lattice 零改动。潮汐基频源码零改动。**
 
 ---
 
@@ -14,17 +14,17 @@
 
 ## 0.1 一句话
 
-积温把五轴情绪状态翻译成**一行语气指令**，注入到 Serein 请求的最后一条 user 消息里；另外在阈值触发时，用它拼一条主动唤醒通知，投给 Operit 工作流。
-Serein 零改动，积温源码（`vendor/`）零改动。
+潮汐基频把五轴情绪状态翻译成**一行语气指令**，注入到 Lattice 请求的最后一条 user 消息里；另外在阈值触发时，用它拼一条主动唤醒通知，投给 Operit 工作流。
+Lattice 零改动，潮汐基频源码（`vendor/`）零改动。
 
 ## 0.2 链路
 
 ```
 她在 Operit / OMate 发消息
-  → 积温桥（18220，反代）
-       ├─ 读五轴状态 → 拼【积温·此刻】块 → 注入最后一条 user 消息
+  → 潮汐基频桥（18220，反代）
+       ├─ 读五轴状态 → 拼【潮汐基频 · CADENCE】块 → 注入最后一条 user 消息
        └─ 异步喂判定器（agnes-3.0-flash）→ applyDelta
-  → Serein 网关（18217）→ 上游模型 → 带着"此刻什么心情"回复
+  → Lattice 网关（18217）→ 上游模型 → 带着"此刻什么心情"回复
 
 旁路（阈值触发，独立 tick，5 分钟一次）：
   connection 过线 → contact（找她）
@@ -41,7 +41,7 @@ Serein 零改动，积温源码（`vendor/`）零改动。
 **此刻块（她说话时）**
 
 ```
-【积温·此刻】
+【潮汐基频 · CADENCE】
 闲适不设防，表达丰沛舒展，松软随性，带着自然而然的亲近与温热。
 【此状态为潜意识的底色沉淀，自然浸润在回应里，不作任何元说明或刻意提及。】
 ```
@@ -49,7 +49,7 @@ Serein 零改动，积温源码（`vendor/`）零改动。
 **主动唤醒（contact）**
 
 ```
-【积温·此刻】
+【潮汐基频 · CADENCE】
 她安静了很久，这边的记挂已经攒得有些沉了。
 闲适不设防，表达丰沛舒展，松软随性，带着自然而然的亲近与温热。
 你可以直接给她发文字消息，也可以先用工具做点什么再给她。做什么、用什么，你自己决定。
@@ -92,7 +92,7 @@ Serein 零改动，积温源码（`vendor/`）零改动。
 | `TICK_MINUTES` | 5 | 引擎 tick 间隔 |
 | `CONNECTION_RATE` | 0.0025 /min | connection 基础漂移 |
 | `CONNECTION_ACCEL` / `ACCEL_DELAY` | 1.5 / 30min | 久未联系后的加速 |
-| `POISE_DEFEND_THRESHOLD` | **1.0** | 哨兵值 = 永不触发（防御通路已死，参数未清理） |
+| `POISE_DEFEND_THRESHOLD` | **0.35** | connection 过此线后 poise 以 0.004/min 向 0.5 漂移；2026-10-23 由哨兵 1.0 下调，用于驱动 27 格的档 2 / 档 3 |
 | `VALENCE_ACTIVITY_THRESHOLD` | **-1.0** | 同上，低情绪通道入口已死 |
 | `AROUSAL_CONNECTION_RISE_THRESHOLD` | **0.5** | 2026-10-23 新开：connection 过 0.5 后 arousal 随之上爬 |
 | `AROUSAL_CONNECTION_RISE_RATE` | **0.007** /min | 净上升 0.0020/min（回归吃掉 0.005）。**rate ≤ 0.005 时净上升为零**，实测 8 小时只涨 0.025 |
@@ -104,19 +104,19 @@ Serein 零改动，积温源码（`vendor/`）零改动。
 
 `arousal` 爬升是线性的、没有平衡点：她整日不出现会顶到 1.0，回来后回归要 200 分钟才落到 0。嫌顶格太久就把 rate 降到 0.006。
 
-## 0.7 硬契约（改字必须同步 Serein）
+## 0.7 硬契约（改字必须同步 Lattice）
 
 | 项 | 值 | 位置 |
 |---|---|---|
-| 块头 | `【积温·此刻】`（三场景统一，**不要分场景**） | `inject-text.js` `SCENE_TAG` |
+| 块头 | `【潮汐基频 · CADENCE】`（三场景统一，**不要分场景**） | `inject-text.js` `BLOCK_TITLE` |
 | 尾句 | `【此状态为潜意识的底色沉淀，自然浸润在回应里，不作任何元说明或刻意提及。】` | `BOUNDARY_INNER`，**唯一一条** |
-| Serein 侧 | `chat_context.py` 的 `EXTERNAL_CONTEXT_BLOCK_END_MARKERS`（1 条） | `src/serein/chat_context.py` |
+| Lattice 侧 | `chat_context.py` 的 `EXTERNAL_CONTEXT_BLOCK_END_MARKERS`（1 条） | `src/lattice/chat_context.py` |
 
 三条铁律：
 
-1. **块内除块头外不允许出现第二个 `【…】` 行**。Serein 见到行首【】会重算跳过态，内层多一个就提前出块，正文整段泄漏进归档和检索 query。
+1. **块内除块头外不允许出现第二个 `【…】` 行**。Lattice 见到行首【】会重算跳过态，内层多一个就提前出块，正文整段泄漏进归档和检索 query。
 2. **破裂代价不对称**：块头发了、尾句对不上 → 跳过态一路吃到文本结尾 → **她紧随其后的原话被整段吞掉**（归档成空字符串）。
-3. 改措辞只改 `BOUNDARY_INNER`，然后同步 Serein 并跑 `_test/contract_check.js`（当前 **41/41 passed**）。
+3. 改措辞只改 `BOUNDARY_INNER`，然后同步 Lattice 并跑 `_test/contract_check.js`（当前 **41/41 passed**）。
 
 ## 0.8 文件结构
 
@@ -128,7 +128,7 @@ lib/
   analyzer.js          判定器：读对话 → 五轴 delta
   env.js  clock.js  loopback.js  repeat-guard.js  mcp.js
 vendor/
-  jiwen.js             五轴引擎（**不修改**，改动全走 createJiwen(opts)）
+  cadence.js             五轴引擎（**不修改**，改动全走 createCadence(opts)）
   tone-grid.js         语调网格查表（**不修改**）
 config/
   tone-harlan.json     27 格 + connection 四段 + 出口说明 + 归档键
@@ -160,14 +160,14 @@ deploy.sh
 ## 0.10 运维速查
 
 ```bash
-systemctl restart jiwen-bridge          # 改配置/代码后重启
+systemctl restart cadence-bridge          # 改配置/代码后重启
 node _test/render_now.js                # 看五轴 + 实际渲染出的三种块
 node _test/contract_check.js            # 契约 41 条，必须全过
 node _test/arousal_probe.js 0.007 0.5   # 模拟 arousal 爬升
 tail -f data/bridge.log                 # 日志
 ```
 
-**改 `state.json` 的铁律**：必须先 `systemctl stop jiwen-bridge`，改完再 `start`。否则运行中的进程会 tick + save，把旧字段写回去，数值静默丢失（2026-10-23 踩过一次，`poise` 0.06 一度归零）。
+**改 `state.json` 的铁律**：必须先 `systemctl stop cadence-bridge`，改完再 `start`。否则运行中的进程会 tick + save，把旧字段写回去，数值静默丢失（2026-10-23 踩过一次，`poise` 0.06 一度归零）。
 
 **推送 GitHub**：VPS 上没有凭证，走本机中继 —— VPS `git bundle create` → 下载 → 本机 clone 后 `git push`（本机 Git 凭据管理器存着账号）。
 
@@ -179,11 +179,11 @@ tail -f data/bridge.log                 # 日志
 
 ```
 用户在 Operit / OMate 发消息
-  → 积温桥（VPS，反向代理）
-       ├─ 取五轴状态 → 拼【积温·此刻】块   ← connection 由判定器 delta + tick 漂移驱动（2026-10-08 起，不再每轮归零）
+  → 潮汐基频桥（VPS，反向代理）
+       ├─ 取五轴状态 → 拼【潮汐基频 · CADENCE】块   ← connection 由判定器 delta + tick 漂移驱动（2026-10-08 起，不再每轮归零）
        ├─ 注入到最后一条 user 消息
        └─ 异步：喂判定器（agnes-3.0-flash）→ applyDelta
-  → Serein 网关（18217）
+  → Lattice 网关（18217）
   → 上游模型
   → 模型带着"现在什么心情"回复
 ```
@@ -213,8 +213,8 @@ tail -f data/bridge.log                 # 日志
 
 | # | 原方案 | 修正 | 原因 |
 |---|---|---|---|
-| 1 | 判定器输出 `{gravity, shelter, connection}` | 重映射为 `{pride, valence, arousal, connection}` | 积温引擎**没有 gravity/shelter 轴**，装不进去。语义映射见 `config/analyze-prompt.md` |
-| 2 | 开局用积温默认初值 | 显式给 `NEUTRAL_SEED` | 积温 `DEFAULT_STATE` 用 `axes[x][0]` 作初值（pride/valence/arousal 均为 -1），**开局就是"糟透了"**，与 Harlan 人设冲突 |
+| 1 | 判定器输出 `{gravity, shelter, connection}` | 重映射为 `{pride, valence, arousal, connection}` | 潮汐基频引擎**没有 gravity/shelter 轴**，装不进去。语义映射见 `config/analyze-prompt.md` |
+| 2 | 开局用潮汐基频默认初值 | 显式给 `NEUTRAL_SEED` | 潮汐基频 `DEFAULT_STATE` 用 `axes[x][0]` 作初值（pride/valence/arousal 均为 -1），**开局就是"糟透了"**，与 Harlan 人设冲突 |
 | 3 | `contact` 通知要带 `{hours}`/数值 | 不给内部数值，只给档位词 | 沿用「不给数，给了模型会报数」的范式 |
 | 4 | 判定器只取 4 条 | 取 4 条，但**按当前窗口** | 跨窗口合并会把"技术讨论"和"情感交流"搅在一起，小模型判错 |
 
@@ -240,7 +240,7 @@ tail -f data/bridge.log                 # 日志
 | `lib/tone-wrap.js` | **删除**。它唯一的职责就是那次覆盖 |
 | `config` 的 `contactOverride` | **键已删除**（原文案留档 git 历史 `de0af31` 及之前） |
 | `config` 的 `urgencyBoost` | 四档全置 `null`。⚠️ 不删键 —— 不传会让 vendor 回落到内置 `DEFAULT_URGENCY`（作者文案，风格不符） |
-| 新增 `lib/describe.js` + `config` 的 `describe` | **描述层四段**，照抄作者 `vendor/jiwen.js:751` `defaultPromptContext` 的结构（connection 4 / pride 5 / V×A 4+2 / immersion 2），文案按 Harlan 重写 |
+| 新增 `lib/describe.js` + `config` 的 `describe` | **描述层四段**，照抄作者 `vendor/cadence.js:751` `defaultPromptContext` 的结构（connection 4 / pride 5 / V×A 4+2 / immersion 2），文案按 Harlan 重写 |
 
 退役的两层各自的问题：
 - `contactOverride` —— 顶掉整条 45 格；
@@ -301,7 +301,7 @@ tail -f data/bridge.log                 # 日志
 合起来是"他干了什么 → 摸到了什么"的顺承：
 
 ```text
-【积温·此刻】
+【潮汐基频 · CADENCE】
 她好一阵子没说话了。心思自己飘了过去。
 留了点余地，开口不是不行。
 刚才在上网冲浪。                 ← 动作（段4）
@@ -327,7 +327,7 @@ https://arxiv.org/abs/1706.03762
 
 ### 二之二 · 补三：撤掉 `resetConnection()` —— connection 交回判定器（2026-10-08）
 
-桥原先在**每轮真人开口**时调 `jiwen.resetConnection()`，它把 `state.connection` 直接写成 0。
+桥原先在**每轮真人开口**时调 `cadence.resetConnection()`，它把 `state.connection` 直接写成 0。
 两处损害：
 
 | # | 现象 | 机制 |
@@ -338,15 +338,15 @@ https://arxiv.org/abs/1706.03762
 **这条不是引擎的问题，是桥自己加的一刀砍错了地方。** 作者原设计本来就不是"回复即归零"：
 
 ```
-vendor/jiwen.js:41    connectionOnReply: 0.20,  // [已弃用] 对方回复时 connection 降幅（现由 LLM delta 接管）
-vendor/jiwen.js:277   // 连接需求降幅现由外部 LLM 分析（如 analyzeChatSegment）通过 applyDelta 注入。
+vendor/cadence.js:41    connectionOnReply: 0.20,  // [已弃用] 对方回复时 connection 降幅（现由 LLM delta 接管）
+vendor/cadence.js:277   // 连接需求降幅现由外部 LLM 分析（如 analyzeChatSegment）通过 applyDelta 注入。
 ```
 
 处置：
 
 | 项 | 做法 |
 |---|---|
-| `jiwen.resetConnection()` 调用 | **删除**（`bridge.js` 请求主流程）。connection 改由「判定器 delta + tick 漂移」驱动 |
+| `cadence.resetConnection()` 调用 | **删除**（`bridge.js` 请求主流程）。connection 改由「判定器 delta + tick 漂移」驱动 |
 | 判定器的 `connection` 维 | **保留**（`lib/analyzer.js` 规则 7 + clamp `[-0.50, 0.30]` 原样）—— 撤 reset 是为了让它生效，不是砍掉它 |
 | 「她开口」的缓解兜底 | 新增 `replyRelief()`：判定**没跑成**时补一顿 `applyDelta({connection: -CONNECTION_RELIEF})`，默认 `0.35` |
 
@@ -396,7 +396,7 @@ contact 的条件:                          c ∈ [0.35, 0.50) 且 pride < 0.5�
 而如果靠调高 `prideDefendRate` 把「嘴硬」通道焊死，代价是：**`pride ≥ 0.5` 占醒着时间的 80%**，
 描述层第 2 段被钉死在同一档、文案不再流动。
 
-**解法：换一条入口。** 引擎里 `find_activity` 有**两条互不相干**的入口（`vendor/jiwen.js:507`）：
+**解法：换一条入口。** 引擎里 `find_activity` 有**两条互不相干**的入口（`vendor/cadence.js:507`）：
 
 | 入口 | 条件 | 看 connection？ |
 |---|---|---|
@@ -432,7 +432,7 @@ vendor 把 ② 的阈值默认成 `-1.0`（永不触发），所以此前只能�
 2. `activityConnectionRelief` 只在**活动类型变化**时扣（同类型连续冲浪不重复扣），
    且有 `0.01` 下限（防止清零导致阈值永不触达）。
 
-**vendor 一行未动**：两处都是 `bridge.js` 把 `thresholds` / `rates` 传进 `createJiwen` 的既有接口。
+**vendor 一行未动**：两处都是 `bridge.js` 把 `thresholds` / `rates` 传进 `createCadence` 的既有接口。
 回归：`_test/valence_channel_check.js`（16 例，三层：通道行为 / 缓解规则 / 接线断言）。
 
 ---
@@ -442,7 +442,7 @@ vendor 把 ② 的阈值默认成 `-1.0`（永不触发），所以此前只能�
 两种投递形态共用同一骨架，只差正文来源：
 
 ```
-【积温·此刻】                       ← 块头。2026-10-07 起三场景统一，不再按场景区分
+【潮汐基频 · CADENCE】                       ← 块头。2026-10-07 起三场景统一，不再按场景区分
 （描述层 1~4 行：处境 —— 说「我此刻在什么状态」，陈述句、零祈使）
 （正文：该场景的行为指令 —— 说「那就该怎么说话」，45 格 / sceneOverride / 冲浪产物）
 （出口说明：仅主动唤醒，见下表）
@@ -459,12 +459,12 @@ vendor 把 ② 的阈值默认成 `-1.0`（永不触发），所以此前只能�
 > （找她块正文必须是 45 格本体 —— contactOverride 退役的直接证据）。
 > 历史分析留档：`_test/state_lines_probe.txt`、`_test/compare_state_lines.txt`。
 
-> 头尾沿革：旧头 `【积温·{场景}｜参考不是指令】` / 旧尾 `以上是系统通知，非用户消息，不用提及相关内容。`
-> → 二版头 `【积温·{场景}】` / 二版尾 `以上是内在心绪和潜意识的自然流露，切勿对她复述或提及此状态。`
+> 头尾沿革：旧头 `【潮汐基频 · CADENCE】` / 旧尾 `以上是系统通知，非用户消息，不用提及相关内容。`
+> → 二版头 `【潮汐基频 · CADENCE】` / 二版尾 `以上是内在心绪和潜意识的自然流露，切勿对她复述或提及此状态。`
 > → 三版尾 `此状态为潜意识的底色沉淀，自然浸润在回应里，不作任何元说明或刻意提及。`
 > → 四版尾 `【此状态为潜意识的底色沉淀，自然浸润在回应里，不作任何元说明或刻意提及。】`（现行，整句套【】）
 > 去掉了"参考不是指令""系统通知""非用户消息"这类工单味元话语。
-> 尾句整句套【】的理由：块头是`【积温·X】`、块尾也落在`【】`上，视觉上夹成一个完整段——
+> 尾句整句套【】的理由：块头是`【潮汐基频 · CADENCE】`、块尾也落在`【】`上，视觉上夹成一个完整段——
 > 既帮模型分清哪句是系统侧材料，也免得尾句被当成她的话的开头。
 > ⚠️ 尾句刻意**不写**"以下是她的消息"：用户消息后面可能紧跟文件传输的文本/地址，
 > 写"以下是她的消息"会把文件信息误纳入"她的话"语义。
@@ -484,7 +484,7 @@ vendor 把 ② 的阈值默认成 `-1.0`（永不触发），所以此前只能�
 | `独处 + 有产物` | 冲浪回投 `/surf/finding` | 全 | `buildFindingBody(finding)` | 无（改由冲浪尾句收尾） |
 
 > `独处` 的 reason 有三个键：`pride_block` / `low_valence` / `high_arousal`。
-> 由积温引擎按触发原因填，桥只透传，不再把 `high_arousal` 拆成独立场景。
+> 由潮汐基频引擎按触发原因填，桥只透传，不再把 `high_arousal` 拆成独立场景。
 
 **为什么独处要独立正文**：`contact` 的正文（45 格）在说"用什么语气和她说话"，
 而独处的语义是"她不在，这是我的时间"。若共用，独处会挂上联系她的语气，
@@ -505,19 +505,19 @@ vendor 把 ② 的阈值默认成 `-1.0`（永不触发），所以此前只能�
 
 ## 二之二、分工边界（重要）
 
-**积温管"带着一种状态维持"，不管"这一轮是什么情绪"。**
+**潮汐基频管"带着一种状态维持"，不管"这一轮是什么情绪"。**
 
 | 层 | 负责什么 | 不负责什么 |
 |---|---|---|
 | 世界书 / 角色设定（常驻） | 规则、底线、情境判断、状态类型（动怒线、RP、NSFW） | — |
-| 积温桥 | 五轴长期漂移的数值维护 + 翻译成底色锚点 | 单轮情绪类型识别、情境判定 |
-| 上游模型 | 结合世界书 + 积温锚点 + 当前对话产出回复 | — |
+| 潮汐基频桥 | 五轴长期漂移的数值维护 + 翻译成底色锚点 | 单轮情绪类型识别、情境判定 |
+| 上游模型 | 结合世界书 + 潮汐基频锚点 + 当前对话产出回复 | — |
 
-**为什么不扩轴**：积温的价值在于「简单」。一旦加入 `libido` 第六轴、模式层、状态机，
+**为什么不扩轴**：潮汐基频的价值在于「简单」。一旦加入 `libido` 第六轴、模式层、状态机，
 就会走向心潮那样的高复杂度路线——那正是被淘汰的方案。
 
 **三雷区（动怒）、RP 结界、NSFW 都属世界书职责**：世界书常驻，模型每轮都读得到，
-不需要积温替它判断。判定器只输出**数值方向**，不输出行为指令。
+不需要潮汐基频替它判断。判定器只输出**数值方向**，不输出行为指令。
 
 详见 `config/persona-scope.md`。
 
@@ -528,7 +528,7 @@ vendor 把 ② 的阈值默认成 `-1.0`（永不触发），所以此前只能�
 | 文件 | 作用 |
 |---|---|
 | `bridge.js` | 桥本体。反向代理 + 注入 + 判定器调度 + tick 定时器 |
-| `lib/inject-text.js` | 状态 → 「此刻块」/「自主唤醒通知」文本 + `stripJiwenBlocks()`（剥离积温块） |
+| `lib/inject-text.js` | 状态 → 「此刻块」/「自主唤醒通知」文本 + `stripCadenceBlocks()`（剥离潮汐基频块） |
 | `lib/loopback.js` | **回环守卫**。认出"这条 user 消息其实是桥自己发出去的通知" |
 | `lib/describe.js` | **描述层**。四段状态陈述（处境），拼在块头与 45 格之间。2026-10-08 新增，接替已退役的 `lib/tone-wrap.js` |
 | `lib/activity.js` | **活动登记**。描述层第 4 段的真来源：冲浪跑完 → `setActivity('search','上网冲浪')` |
@@ -537,10 +537,10 @@ vendor 把 ② 的阈值默认成 `-1.0`（永不触发），所以此前只能�
 | `lib/clock.js` | **业务时区时钟**。静默时段 / 日上限跨天按 `TZ_OFFSET_HOURS` 算，不依赖系统 TZ |
 | `lib/env.js` | 极简 .env 解析 |
 | `config/tone-harlan.json` | **Harlan 语调网格**（9 簇 × 5 档 pride）+ **描述层四段**（`describe`）+ `sceneOverride`。核心人格皮肤。已退役：`contactOverride`（键删）、`urgencyBoost`（四档 null） |
-| `config/persona-scope.md` | **分工边界**：世界书 / 积温 / 模型 三者职责划分 |
+| `config/persona-scope.md` | **分工边界**：世界书 / 潮汐基频 / 模型 三者职责划分 |
 | `config/analyze-prompt-user.txt` | 判定器 User Prompt（可迭代） |
 | `config/analyze-prompt.md` | 判定标准文档（含语义映射说明） |
-| `vendor/jiwen.js` `tone-grid.js` | 积温上游源码，**未改动** |
+| `vendor/cadence.js` `tone-grid.js` | 潮汐基频上游源码，**未改动** |
 | `deploy.sh` | VPS 部署脚本 |
 | `提示词全量清单.md` | **给 AI 读的 90 条 45 格全文**（含阅读说明、五轴定义、场景区别、阈值速查、描述层四段表） |
 | `提示词全量清单.html` | **给人看的可折叠验收清单**（9 簇 × 5 档 = 45 格） |
@@ -562,8 +562,8 @@ vendor 把 ② 的阈值默认成 `-1.0`（永不触发），所以此前只能�
 | `_test/loopback_check.js` | **回环守卫专项**（66 例）：认领命中/可重复认领/TTL/剥离三版尾句/唤醒轮含工具循环/回环让位/通知内容完整性/源码顺序断言 |
 | `_test/probe_supersede.js` | **通知顺序探针**：真引擎 7 天逐 tick，证伪"contact 被更晚的 find_activity 顶掉"，并量出投递滞后与静默期照扣衰减 |
 | `_test/dump_loopback_collision.js` | **回环语域冲突对照**：渲染"通知 vs 此刻块"打架的反例（回归参照） |
-| `_test/contract_check.js` | **跨仓库契约（静态）**：读 Serein 源码比对常量 + 穷举 1080 块形状 |
-| `_test/conformance_check.js` | **跨仓库契约（动态）**：用 Serein 真实剥离函数跑桥产的块 |
+| `_test/contract_check.js` | **跨仓库契约（静态）**：读 Lattice 源码比对常量 + 穷举 1080 块形状 |
+| `_test/conformance_check.js` | **跨仓库契约（动态）**：用 Lattice 真实剥离函数跑桥产的块 |
 | `_test/conformance_strip.py` | 上面那条的 python 侧（被调用，不单独跑） |
 
 ---
@@ -582,7 +582,7 @@ vendor 把 ② 的阈值默认成 `-1.0`（永不触发），所以此前只能�
 **结论**：
 
 - **默认参数（当前 `.env.example`）日均 2 次**，节奏合适，不用改。
-- 首发在**凌晨 2 点**是因为静默时段只拦投递、不拦累积，熬过一夜概率必然顶格。**要抑制就调 `QUIET_START`/`QUIET_END`，或在桥里加"静默期不累积"**（当前未实现，因为积温上游不支持）。
+- 首发在**凌晨 2 点**是因为静默时段只拦投递、不拦累积，熬过一夜概率必然顶格。**要抑制就调 `QUIET_START`/`QUIET_END`，或在桥里加"静默期不累积"**（当前未实现，因为潮汐基频上游不支持）。
 - 上表"首发时刻"按**业务时区**计（`param_scan.js` 的模拟起点是 `2026-10-05T00:00:00+08:00`）。运行时实际的静默判定见七之五。
 - `r=0.00025` 这类"更缓"参数会让**一天一次都不发**——因为 8 小时只涨到 0.11，够不到 0.35 的线。这是**特性不是 bug**。
 
@@ -594,13 +594,13 @@ vendor 把 ② 的阈值默认成 `-1.0`（永不触发），所以此前只能�
 
 ### 1. 上传
 
-把整个 `jiwen-bridge/` 目录传到 VPS（例如 `/root/jiwen-bridge`）。
+把整个 `cadence-bridge/` 目录传到 VPS（例如 `/root/cadence-bridge`）。
 
 ### 2. 填配置
 
 ```bash
-cp /root/jiwen-bridge/.env.example /root/jiwen-bridge/.env
-nano /root/jiwen-bridge/.env
+cp /root/cadence-bridge/.env.example /root/cadence-bridge/.env
+nano /root/cadence-bridge/.env
 ```
 
 必填三项：
@@ -608,13 +608,13 @@ nano /root/jiwen-bridge/.env
 | 变量 | 填什么 |
 |---|---|
 | `BRIDGE_TOKEN` | 自定义，≥24 字符。Operit 端用它做 Bearer |
-| `UPSTREAM_TOKEN` | Serein 的 Gateway Key（已预填，如需更换同步） |
+| `UPSTREAM_TOKEN` | Lattice 的 Gateway Key（已预填，如需更换同步） |
 | `LLM_KEY` | 已预填 agnes 的 key |
 
 ### 3. 跑部署脚本
 
 ```bash
-bash /root/jiwen-bridge/deploy.sh
+bash /root/cadence-bridge/deploy.sh
 ```
 
 脚本会：检查 Node ≥20 → 安装文件 → 生成 systemd unit → 启动 → 健康检查。
@@ -622,9 +622,9 @@ bash /root/jiwen-bridge/deploy.sh
 ### 4. 验证
 
 ```bash
-systemctl status jiwen-bridge
+systemctl status cadence-bridge
 curl http://127.0.0.1:18220/bridge/health
-tail -f /root/jiwen-bridge/data/bridge.log
+tail -f /root/cadence-bridge/data/bridge.log
 ```
 
 ### 5. 改 Operit / OMate 的 Base URL
@@ -632,7 +632,7 @@ tail -f /root/jiwen-bridge/data/bridge.log
 | 端 | 原来 | 改成 |
 |---|---|---|
 | Operit | `http://154.21.200.74:18217/v1` | `http://154.21.200.74:<BRIDGE_PORT>/v1` |
-| Token | Serein Gateway Key | **桥的 `BRIDGE_TOKEN`** |
+| Token | Lattice Gateway Key | **桥的 `BRIDGE_TOKEN`** |
 | OMate | 同上 | 同上 |
 
 > 桥会自动把 Authorization 换成 `UPSTREAM_TOKEN` 再转发，所以 Operit 填桥的 token 即可。
@@ -643,7 +643,7 @@ tail -f /root/jiwen-bridge/data/bridge.log
 
 ### 为什么需要它
 
-积温的 proactive 是**引擎主动触发**（越阈 → 要开口）。但：
+潮汐基频的 proactive 是**引擎主动触发**（越阈 → 要开口）。但：
 
 ```
 Operit 在手机（NAT / 移动网络）  ←→  桥在 VPS
@@ -656,14 +656,14 @@ MCP 服务就是这个"拉"的接口。tick 触发时通知不再直接 POST，�
 ### 端点
 
 ```
-POST http://154.21.200.74:18220/mcp     ← JSON-RPC（工具调用走这里）
-GET  http://154.21.200.74:18220/mcp     ← SSE 长连接（客户端建流用）
-DELETE http://154.21.200.74:18220/mcp   ← 会话终止
+POST http://154.21.200.74:18220/cadence/mcp     ← JSON-RPC（工具调用走这里）
+GET  http://154.21.200.74:18220/cadence/mcp     ← SSE 长连接（客户端建流用）
+DELETE http://154.21.200.74:18220/cadence/mcp   ← 会话终止
 Authorization: Bearer <BRIDGE_TOKEN>
 ```
 
 - 走 **Streamable HTTP**（JSON-RPC 2.0）。**三种方法都要支持**，见下方"为什么 GET 不能省"。
-- 与聊天代理**共用同一端口**，只认 `/mcp` 这一个路径，互不干扰。
+- 与聊天代理**共用同一端口**，只认 `/cadence/mcp`（另兼容 `/mcp`），互不干扰。
 - 鉴权复用桥的 `BRIDGE_TOKEN`。
 
 ### 客户端握手序列（对齐官方 SDK）
@@ -722,8 +722,8 @@ StreamableHttpError: Maximum reconnection attempts exceeded
   "scene": "contact",
   "reason": null,
   "at": "2026-10-05T00:00:00.000Z",
-  "notice": "【积温·此刻】\nneutral，表达照常，松弛平稳，带着惯常的温热与底气。\n【此状态为潜意识的底色沉淀，自然浸润在回应里，不作任何元说明或刻意提及。】",
-  "state_summary": "[积温] c:0.42(想念) ...",
+  "notice": "【潮汐基频 · CADENCE】\nneutral，表达照常，松弛平稳，带着惯常的温热与底气。\n【此状态为潜意识的底色沉淀，自然浸润在回应里，不作任何元说明或刻意提及。】",
+  "state_summary": "[潮汐基频] c:0.42(想念) ...",
   "note": "请把 notice 内容作为系统侧消息注入对话，然后正常生成回复；不要提及通知本身的存在。"
 }
 ```
@@ -824,8 +824,8 @@ StreamableHttpError: Maximum reconnection attempts exceeded
 
 ### 问题
 
-主动唤醒的形态是：桥 tick 越阈 → 生成积温块 → MCP 队列 → Operit 工作流把 notice
-原文当一条 **user 消息**注入对话 → 该请求又打回桥（桥是 Serein 前面的反向代理，
+主动唤醒的形态是：桥 tick 越阈 → 生成潮汐基频块 → MCP 队列 → Operit 工作流把 notice
+原文当一条 **user 消息**注入对话 → 该请求又打回桥（桥是 Lattice 前面的反向代理，
 只要模型被调用就必经此处）。
 
 于是桥看到一个"她开口了"的请求，**可实际上她什么都没说**。不识别就犯三个错：
@@ -837,7 +837,7 @@ StreamableHttpError: Maximum reconnection attempts exceeded
 | ③ | **判定器每轮读到桥自己注入的此刻块**（最普遍，与唤醒无关） | `extractRecentDialog` 的调用顺序 |
 
 ③ 的成因：`injectIntoBody` 会直接改写最后一条 user 消息。若先注入、后取 dialog，
-判定器读到的就是"这份积温块 + 她的真话"，等于拿自己的输出喂自己，
+判定器读到的就是"这份潮汐基频块 + 她的真话"，等于拿自己的输出喂自己，
 形成 `状态 → 文本 → 判定器 → 状态` 的自我锚定闭环。
 
 ### 修法
@@ -871,7 +871,7 @@ if (!loopback && !connectionHandled) replyRelief('not analyzed');  // 没判成 
 **B · 判定器只读「注入前」的对话**
 
 1. `const dialog = extractRecentDialog(body, 4);` 提到 `injectIntoBody` **之前**；
-2. `extractRecentDialog` 内先过 `stripJiwenBlocks()`，把历史里带进来的旧块剔掉
+2. `extractRecentDialog` 内先过 `stripCadenceBlocks()`，把历史里带进来的旧块剔掉
    （三版尾句都认，尾句缺失时按空行兜底）。
 
 **C · 回环让位（2026-10-06 选定的去重方案）**
@@ -900,7 +900,7 @@ if (block && !loopback && shouldInject(block, state)) {   // 回环让位
 
 日志里多一个 `SKIP_INJECT=loopback` 标记，线上可核对让位是否真的生效。
 
-**未采纳的备选**：让 Operit 只投一个「信封」（如 `【积温·此刻】`），桥按
+**未采纳的备选**：让 Operit 只投一个「信封」（如 `【潮汐基频 · CADENCE】`），桥按
 `loopback.scene` 用请求时刻的状态重渲染完整块。文案与投递彻底解耦，但
 `loopbackGuard` 是**进程内内存**，桥一重启那一轮就认领不到 → 唤醒丢失 +
 connection 缓解 / 判定器误开，代价比收益大。
@@ -909,33 +909,33 @@ connection 缓解 / 判定器误开，代价比收益大。
 
 - 桥重启（`systemctl restart`）会清空进程内的回环记忆，重启后投递的那一轮通知
   会被当成"她的话"（多一次 connection 缓解 + 喂判定器）。
-- 积温块是拼进 user 正文的，会被 Serein 存进 `raw_events` 并记成**她的消息**
-  （实测 8435 条里 71 条含"积温"，其中 user 43 / assistant 28）。
+- 潮汐基频块是拼进 user 正文的，会被 Lattice 存进 `raw_events` 并记成**她的消息**
+  （实测 8435 条里 71 条含"潮汐基频"，其中 user 43 / assistant 28）。
   影响语义检索与新窗口续接材料。
 
-**2026-10-06 更新：后一条已由 Serein 侧解决，见下节。**
-原先考虑的"块改走独立 `role:'system'` 消息"方案**不做** —— 查证发现 Serein 自己的
+**2026-10-06 更新：后一条已由 Lattice 侧解决，见下节。**
+原先考虑的"块改走独立 `role:'system'` 消息"方案**不做** —— 查证发现 Lattice 自己的
 命中记忆也是拼在 user 消息里的（只有常驻上下文走 system），模型能分清，没必要。
 
 ---
 
-## 五之四、与 Serein 的契约（积温块剥离，2026-10-06）
+## 五之四、与 Lattice 的契约（潮汐基频块剥离，2026-10-06）
 
 > ⚠️ **契约形态仍然有效，但尾句已从两条收敛为一条**（2026-10-23 删除「独处+有产物」专用尾句）。当前形态见 §0.7。
 
 ### 契约形态
 
-Serein 侧（fork 提交 `a5c1bdd`）在 `chat_context.py` 里加了三件事：
+Lattice 侧（fork 提交 `a5c1bdd`）在 `chat_context.py` 里加了三件事：
 
-1. `EXTERNAL_CONTEXT_BLOCK_TITLES` 增加 `积温·此刻`（原为三条，2026-10-07 已删掉
-   `积温·找她` / `积温·独处`，**且不要补回来**）：
-   ⚠️ 桥自 2026-10-07 起**只发** `积温·此刻`，白名单也**只留它一条**。
+1. `EXTERNAL_CONTEXT_BLOCK_TITLES` 增加 `潮汐基频·此刻`（原为三条，2026-10-07 已删掉
+   `潮汐基频·找她` / `潮汐基频·独处`，**且不要补回来**）：
+   ⚠️ 桥自 2026-10-07 起**只发** `潮汐基频·此刻`，白名单也**只留它一条**。
    历史块头为什么宁可不剥离也不补 —— 剥离函数只处理**进了跳过态**的行，而
    **出跳过态只认"下一个白名单标题行 / 尾标记行"**；一/二版旧块的尾句是**裸行**
    （不带【】）→ 永远结束不了跳过态 → 补进白名单就是 skipping 吃到文本结尾、
    **把她紧随的原话整段吞掉**（归档成 `''`）。不进白名单只是"不剥离"（旧块留在归档里），
    **不毁任何正文**。两害相权取其轻。`_test/contract_check.js` 有断言守
-   "白名单积温标题恰好等于桥的产出集合"。
+   "白名单潮汐基频标题恰好等于桥的产出集合"。
 2. 新增 `EXTERNAL_CONTEXT_BLOCK_END_MARKERS`；
 3. `_strip_external_context_blocks` 在「按行剥出 `【标题】`」之后、进入跳过态之前，
    先判是不是尾标记。
@@ -943,7 +943,7 @@ Serein 侧（fork 提交 `a5c1bdd`）在 `chat_context.py` 里加了三件事：
 于是剥离过程变成一个状态机：
 
 ```
-见到【积温·X】        → 进跳过态
+见到【潮汐基频 · CADENCE】        → 进跳过态
 跳过态中的任何行      → 丢弃（**空行不算出块信号**）
 见到下一个【】标题行  → 出块
 见到尾标记            → 出块（该行也丢弃）
@@ -952,7 +952,7 @@ Serein 侧（fork 提交 `a5c1bdd`）在 `chat_context.py` 里加了三件事：
 ### ⚠️ 破裂代价不对称 —— 桥侧必须无条件满足
 
 **块头发出、尾标记不匹配 → 跳过态一直持续到消息结尾 → 她的原话被整段吞掉。**
-（Serein 侧用例 8 实测，返回 `''`）
+（Lattice 侧用例 8 实测，返回 `''`）
 
 所以桥侧做了三层防护，改这块之前先看清楚：
 
@@ -968,28 +968,28 @@ Serein 侧（fork 提交 `a5c1bdd`）在 `chat_context.py` 里加了三件事：
 
 ```
 桥侧发出     【此状态为潜意识的底色沉淀，自然浸润在回应里，不作任何元说明或刻意提及。】
-Serein 存    此状态为潜意识的底色沉淀，自然浸润在回应里，不作任何元说明或刻意提及。
+Lattice 存    此状态为潜意识的底色沉淀，自然浸润在回应里，不作任何元说明或刻意提及。
 ```
 
-Serein 先按行取 `【…】` 里的标题、再拿**内文**比对，所以两边字面量不同形状。
-**改措辞要改 `BOUNDARY_INNER`，然后通知 Serein 侧同步那个字符串。**
+Lattice 先按行取 `【…】` 里的标题、再拿**内文**比对，所以两边字面量不同形状。
+**改措辞要改 `BOUNDARY_INNER`，然后通知 Lattice 侧同步那个字符串。**
 
 ### 自动化校验（两个测试，别删）
 
 | 测试 | 性质 | 覆盖 |
 |---|---|---|
-| `_test/contract_check.js` | 静态 | 读 Serein 源码，比对两侧常量字面量；穷举 1080 个块的形状；负向用例 |
-| `_test/conformance_check.js` | 动态 | 用 Serein 的**真实** `_strip_external_context_from_user_text` 跑桥产出的块，比对输出 |
+| `_test/contract_check.js` | 静态 | 读 Lattice 源码，比对两侧常量字面量；穷举 1080 个块的形状；负向用例 |
+| `_test/conformance_check.js` | 动态 | 用 Lattice 的**真实** `_strip_external_context_from_user_text` 跑桥产出的块，比对输出 |
 
 `contract_check` 能发现"改了一侧忘了另一侧"；`conformance_check` 能发现
-"规则我以为是这样、实际不是"。两个都需要 python 与 Serein 源码，
-找不到时**跳过而不是失败**（VPS 上路径是 `/root/Serein/src`）。
+"规则我以为是这样、实际不是"。两个都需要 python 与 Lattice 源码，
+找不到时**跳过而不是失败**（VPS 上路径是 `/root/lattice/src`）。
 
-### 历史残留（待 Serein 侧补一刀）
+### 历史残留（待 Lattice 侧补一刀）
 
 `raw_events` 里 `role='user'` 含块头的 31 条：**17 条一版尾、14 条二版尾、零条三/四版**。
 
-一版/二版尾句是**裸行**（没有 `【】`），所以 Serein 取不到 title，
+一版/二版尾句是**裸行**（没有 `【】`），所以 Lattice 取不到 title，
 `EXTERNAL_CONTEXT_BLOCK_END_MARKERS` 加它们**也没用** —— 得在跳过态里额外判一次
 "裸行是否等于尾标记"。风险有限（主要影响 turn 哈希与 `_current_turn_user_index`），
 但一旦命中会把整条消息清空。
@@ -1000,10 +1000,10 @@ Serein 先按行取 `【…】` 里的标题、再拿**内文**比对，所以�
 
 | 项 | 位置 |
 |---|---|
-| 五轴状态 | `/root/jiwen-bridge/data/state.json` |
-| 日志 | `/root/jiwen-bridge/data/bridge.log` |
-| 服务 | `systemctl {start,stop,restart,status} jiwen-bridge` |
-| 实时日志 | `journalctl -u jiwen-bridge -f` |
+| 五轴状态 | `/root/cadence-bridge/data/state.json` |
+| 日志 | `/root/cadence-bridge/data/bridge.log` |
+| 服务 | `systemctl {start,stop,restart,status} cadence-bridge` |
+| 实时日志 | `journalctl -u cadence-bridge -f` |
 
 **删掉 `state.json` = 重置情绪**（下次启动回到中性）。
 
@@ -1032,7 +1032,7 @@ Serein 先按行取 `【…】` 里的标题、再拿**内文**比对，所以�
 
 ## 七之四、注入节流（重要，2026-10-05 修）
 
-**问题现象**：真实聊天里只有每半小时第一轮带积温块，之后全是 `inject=false`。
+**问题现象**：真实聊天里只有每半小时第一轮带潮汐基频块，之后全是 `inject=false`。
 
 **根因**：节流比较的是 **block 渲染文本**，而块文本是**离散格**——45 格里相邻两个状态常落在同一格。
 
@@ -1237,13 +1237,13 @@ DAYS=3 node _test/simulate_loop.js     # 只跑前 3 天
 ### 8.1 信号词映射 —— 已完成 ✅
 
 `config/analyze-prompt-user.txt` 已填入完整的 Brat / DDLG / 职场内耗 / 诛心禁区映射表，
-术语已从用户的 `gravity/shelter` **转译为积温五轴**（`pride/valence/arousal/connection`）。
+术语已从用户的 `gravity/shelter` **转译为潮汐基频五轴**（`pride/valence/arousal/connection`）。
 
-**关键转换**：用户原话"gravity 不向负值跌落"= 积温里 **`pride` 不升高**（防御不启动）。
+**关键转换**：用户原话"gravity 不向负值跌落"= 潮汐基频里 **`pride` 不升高**（防御不启动）。
 这两者方向相反，直接照抄会写反，已在 prompt 里显式说明。
 
 **connection 的处理**：用户映射里多处写"connection 清零（-1.0）"，已改为 **`connection: 0`**。
-原因：积温 connection 范围 0~1、delta 上限 -0.5，当时桥每轮已自动 `resetConnection()`，
+原因：潮汐基频 connection 范围 0~1、delta 上限 -0.5，当时桥每轮已自动 `resetConnection()`，
 判定器再给负值是重复扣减。
 （2026-10-08 更新：`resetConnection` 已撤 —— 它连"她开口但敷衍"一起抹掉了，
 见「二之二 · 补三」。现在 connection 交回判定器，兜底只在判定失败时补。）
@@ -1312,7 +1312,7 @@ DAYS=3 node _test/simulate_loop.js     # 只跑前 3 天
 **关键因果链**：`prideDefendThreshold` 关着 → pride 永远不会因冷落升到 `prideBlock`(0.5)
 → `c` 涨到 0.35 时 `p` 恒为 0 → 全部走 `contact`。这就是 0 次的全部原因。
 
-### 打开方式（全部走 `createJiwen(opts)`，**vendor 零改动**）
+### 打开方式（全部走 `createCadence(opts)`，**vendor 零改动**）
 
 | `.env` | 默认 | 说明 |
 |---|---|---|
@@ -1382,34 +1382,34 @@ surf 跑完回投的产物照常发；否则 spawn 那一刻已记账，surf 回
 
 ---
 
-## 十·三补、块头统一为【积温·此刻】（2026-10-07）
+## 十·三补、块头统一为【潮汐基频 · CADENCE】（2026-10-07）
 
-原先块头按场景分三种：`【积温·此刻】`（reactive）/ `【积温·找她】`（contact）/
-`【积温·独处】`（find_activity）。**现统一为 `【积温·此刻】`。**
+原先块头按场景分三种：`【潮汐基频 · CADENCE】`（reactive）/ `【潮汐基频 · CADENCE】`（contact）/
+`【潮汐基频 · CADENCE】`（find_activity）。**现统一为 `【潮汐基频 · CADENCE】`。**
 
 理由：块头不是在给"哪一种通知"编号，它是在告诉模型"这是你此刻的状态"。
 三个场景的块性质完全一样（系统侧材料），差别只该由**正文**承担 ——
 分场景写块头等于把"通知类型"这个实现细节摆到模型眼前。
 
-实现上 `SCENE_TAG` 的 key 全保留、只是三个值相同，将来要重新分场景改值即可。
+实现上 `BLOCK_TITLE` 的 key 全保留、只是三个值相同，将来要重新分场景改值即可。
 `buildProactiveNotice` 的 fallback 也从 `'自主唤醒'` 收紧成 `'此刻'` ——
-块头一旦落在 Serein 白名单之外，整块（含她紧随的原话）都会被吞进归档。
+块头一旦落在 Lattice 白名单之外，整块（含她紧随的原话）都会被吞进归档。
 
 **场景区分挪到了别处，都在桥外或正文里：**
 
 | 维度 | 靠什么区分 |
 |---|---|
 | 内容 | 找她走 `getPromptContext`；独处走 `sceneOverride`；有产物走 `buildFindingBody` |
-| 落点 | Operit 工作流读 MCP 返回的 `SCENE=` / `TARGET=`（`jiwen_pull.js` 的 `TARGET_OF_SCENE`），**与块头无关** |
+| 落点 | Operit 工作流读 MCP 返回的 `SCENE=` / `TARGET=`（`cadence_pull.js` 的 `TARGET_OF_SCENE`），**与块头无关** |
 
-**⚠️ Serein 侧白名单只留 `积温·此刻` 一条，历史块头已删、不要补回。**
-`积温·找她` / `积温·独处` 是历史块头（10-07 之前发出去的），今天仍可能躺在 `raw_events` 里；
+**⚠️ Lattice 侧白名单只留 `潮汐基频·此刻` 一条，历史块头已删、不要补回。**
+`潮汐基频·找她` / `潮汐基频·独处` 是历史块头（10-07 之前发出去的），今天仍可能躺在 `raw_events` 里；
 但它们**不能进白名单**：旧块尾句是**裸行**（无【】），而剥离函数**出跳过态只认下一个
 白名单标题行 / 尾标记行** → 补进去会让 skipping 一路吃到文本结尾，
 **把紧随其后她的原话整段吞掉**。不补则只是"不剥离"（旧块留在归档里），不毁正文。
-`_test/contract_check.js` 有一条断言守这件事（`Serein 白名单里的积温标题恰好等于桥的产出集合`）。
-2026-10-07 归档实证：`积温·找她` **0** 条、`积温·独处` **0** 条（用户判断成立）；
-另有旧头 `积温·此刻｜参考不是指令` 17 条，同样不补。
+`_test/contract_check.js` 有一条断言守这件事（`Lattice 白名单里的潮汐基频标题恰好等于桥的产出集合`）。
+2026-10-07 归档实证：`潮汐基频·找她` **0** 条、`潮汐基频·独处` **0** 条（用户判断成立）；
+另有旧头 `潮汐基频·此刻｜参考不是指令` 17 条，同样不补。
 
 ---
 
@@ -1419,15 +1419,15 @@ surf 跑完回投的产物照常发；否则 spawn 那一刻已记账，surf 回
 
 | 通道 | 谁在跑 | 传的 env | 投递去向 | 线上跑过吗 |
 |---|---|---|---|---|
-| 桥 `spawnSurf()` | `bridge.js`，`find_activity` 越阈时 spawn 一次 | 强制 `DELIVERY_CHANNEL=jiwen` + `AUTO_SCHEDULE=false` + `--once` | `POST /surf/finding` → 桥拼块 → 入队 | **0 次**（`bridge.log` 里 `surf spawning` 一条都没有） |
+| 桥 `spawnSurf()` | `bridge.js`，`find_activity` 越阈时 spawn 一次 | 强制 `DELIVERY_CHANNEL=cadence` + `AUTO_SCHEDULE=false` + `--once` | `POST /surf/finding` → 桥拼块 → 入队 | **0 次**（`bridge.log` 里 `surf spawning` 一条都没有） |
 | `web-surf.service` | systemd 常驻（`ExecStart=/usr/bin/node dist/index.js`，无 `--once`，`Restart=always`） | 由进程**启动时**读到的 `.env` 决定 | `DELIVERY_CHANNEL=console` → 只写 `data/surf.log` | 在跑（今天 13:17 还出了一条） |
 
 关键点：
 
 - `config.ts` 的 `loadDotEnv()` **只在 `process.env[key] === undefined` 时赋值** ——
-  所以桥 spawn 时传的 `DELIVERY_CHANNEL=jiwen` 一定压得住 `.env` 里的同项。桥那条路是通的。
+  所以桥 spawn 时传的 `DELIVERY_CHANNEL=cadence` 一定压得住 `.env` 里的同项。桥那条路是通的。
 - 常驻服务的启动横幅写着 `-> console`（`data/surf.log` 前两行），说明它启动那刻
-  读到的就是 console；`.env` 后来改成 `jiwen` 但**服务没重启**，进程内仍是 console。
+  读到的就是 console；`.env` 后来改成 `cadence` 但**服务没重启**，进程内仍是 console。
   → 它每 6~12 小时自己跑一次、烧一次模型钱，产物**只落在日志里，永远到不了模型**。
 - 10-06 15:17:06 那条 `surf finding received` 是一次**手动**回投（当时桥刚重启 42 秒，
   不可能是它自己 spawn 出来的），不是常驻服务投的。

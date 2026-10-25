@@ -1,7 +1,7 @@
 'use strict';
 // ============================================================
 // 实时块渲染：读线上真实 state.json + tone-harlan.json
-//              喂真实 vendor/jiwen.js 的 getPromptContext/getStyleGuidance
+//              喂真实 vendor/cadence.js 的 getPromptContext/getStyleGuidance
 //              → 用 lib/inject-text.js 的真函数渲染出「此刻块」
 //
 // 目的：直接看「此时此刻基线对应的提示词长什么样」，而不是靠推算。
@@ -10,7 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = '/root/jiwen-bridge';
+const ROOT = '/root/cadence-bridge';
 const statePath = path.join(ROOT, 'data/state.json');
 const tonePath = path.join(ROOT, 'config/tone-harlan.json');
 
@@ -19,7 +19,7 @@ const state = JSON.parse(fs.readFileSync(statePath, 'utf8'));
 if (state.poise === undefined && state.pride !== undefined) state.poise = state.pride;
 const toneCfg = JSON.parse(fs.readFileSync(tonePath, 'utf8'));
 
-const { createJiwen } = require(path.join(ROOT, 'vendor/jiwen.js'));
+const { createCadence } = require(path.join(ROOT, 'vendor/cadence.js'));
 const { createToneGrid } = require(path.join(ROOT, 'vendor/tone-grid.js'));
 const { createDescriber } = require(path.join(ROOT, 'lib/describe.js'));
 const { buildInjectionBlock, buildProactiveNotice } = require(path.join(ROOT, 'lib/inject-text.js'));
@@ -31,7 +31,7 @@ const toneGrid = createToneGrid({
 const describer = createDescriber(toneCfg.describe);
 
 // 用真实 state 造一个引擎实例（onLoad 直接返回线上 state）
-const jiwen = createJiwen({
+const cadence = createCadence({
   getLastMessage: () => null,
   connectionRateFn: () => 0.0025,
   onSave: async () => {},
@@ -56,7 +56,7 @@ const jiwen = createJiwen({
 const fmt = (n) => (typeof n === 'number' ? n.toFixed(3) : String(n));
 
 (async () => {
-  const s = await jiwen.getState();
+  const s = await cadence.getState();
   console.log('════ 当前五轴 ════');
   console.log('  connection(想念) = ' + fmt(s.connection));
   console.log('  poise     (从容) = ' + fmt(s.poise));
@@ -64,7 +64,7 @@ const fmt = (n) => (typeof n === 'number' ? n.toFixed(3) : String(n));
   console.log('  arousal   (唤醒) = ' + fmt(s.arousal));
   console.log('  immersion (沉浸) = ' + fmt(s.immersion) +
     (s.lastActivity ? '  [' + s.lastActivity.label + ']' : ''));
-  console.log('  getStateSummary  = ' + jiwen.getStateSummary());
+  console.log('  getStateSummary  = ' + cadence.getStateSummary());
   console.log();
 
   // 描述层（此刻块：withConnection=false）

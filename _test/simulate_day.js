@@ -11,7 +11,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { createJiwen } = require('../vendor/jiwen.js');
+const { createCadence } = require('../vendor/cadence.js');
 const { createToneGrid } = require('../vendor/tone-grid.js');
 const { createDescriber } = require('../lib/describe.js');
 const { buildInjectionBlock, buildProactiveNotice } = require('../lib/inject-text.js');
@@ -35,7 +35,7 @@ class FakeDate extends RealDate {
 Date = FakeDate;
 
 let store = null;
-const jiwen = createJiwen({
+const cadence = createCadence({
   getLastMessage: () => ({ id: 1, content: '早', timestamp: new RealDate(VNOW).toISOString() }),
   connectionRateFn: () => 0.0007,
   onSave: async (s) => { store = JSON.parse(JSON.stringify(s)); },
@@ -61,25 +61,25 @@ function fmt(ms) {
 async function step(minutes, note) {
   for (let i = 0; i < minutes / TICK; i++) {
     VNOW += TICK * 60 * 1000;
-    const triggers = await jiwen.tick(TICK);
-    const st = await jiwen.getState();
+    const triggers = await cadence.tick(TICK);
+    const st = await cadence.getState();
     for (const t of triggers) events.push({ at: fmt(VNOW), action: t.action, c: st.connection.toFixed(2) });
     if (triggers.length) {
       for (const t of triggers) {
-        if (t.action === 'contact') await jiwen.applyDelta({ connection: -0.35 });
+        if (t.action === 'contact') await cadence.applyDelta({ connection: -0.35 });
       }
     }
   }
-  const st = await jiwen.getState();
+  const st = await cadence.getState();
   rows.push({ at: fmt(VNOW), note: note || '', c: +st.connection.toFixed(3), p: +st.poise.toFixed(3), v: +st.valence.toFixed(3), a: +st.arousal.toFixed(3), i: +st.immersion.toFixed(3) });
 }
 
 (async () => {
-  await jiwen.load();
+  await cadence.load();
 
   console.log('════════ 场景一：她在 08:00 说了一句，然后消失 ════════');
-  await jiwen.applyDelta({ connection: -0.35 });
-  await jiwen.applyDelta({ valence: 0.15, arousal: -0.05, connection: -0.30 });
+  await cadence.applyDelta({ connection: -0.35 });
+  await cadence.applyDelta({ valence: 0.15, arousal: -0.05, connection: -0.30 });
   rows.push({ at: fmt(VNOW), note: '她说"早"+ 判定器delta', ...(await snap()) });
 
   await step(120, '沉默 2h');
@@ -96,13 +96,13 @@ async function step(minutes, note) {
   console.log('\n════════ 场景二：多窗口切换（operit ↔ omate）════════');
   // 关键验证：在 omate 说话，operit 侧也应 reset（全局单实例）
   await step(180, '再次沉默 3h');
-  const before = await jiwen.getState();
+  const before = await cadence.getState();
   console.log(`  切窗前 connection = ${before.connection.toFixed(3)}`);
 
   // 模拟 omate 窗口用户发言 → reset
   console.log('  [omate 窗口] 用户发消息 → 判定器 delta（兜底 -0.35）');
-  await jiwen.applyDelta({ connection: -0.35 });
-  const after = await jiwen.getState();
+  await cadence.applyDelta({ connection: -0.35 });
+  const after = await cadence.getState();
   console.log(`  切窗后 connection = ${after.connection.toFixed(3)}`);
   console.log(`  → 全局单实例${after.connection === 0 ? ' 生效（无人格分裂）' : ' 失效！'}`);
 
@@ -113,8 +113,8 @@ async function step(minutes, note) {
     { name: '她撒娇 → 无波动', delta: { poise: 0.0, valence: 0.0, arousal: 0.0 } },
   ];
   for (const c of cases) {
-    await jiwen.applyDelta(c.delta);
-    const s = await jiwen.getState();
+    await cadence.applyDelta(c.delta);
+    const s = await cadence.getState();
     const block = bI(s, toneGrid);
     const styleLine = block.split('\n').slice(1).join(' ').slice(0, 70);
     console.log(`  ${c.name}`);
@@ -123,8 +123,8 @@ async function step(minutes, note) {
   }
 
   console.log('\n════════ 场景四：主动唤醒通知原文 ════════');
-  await jiwen.applyDelta({ connection: 0.55, poise: 0.4 });
-  const sp = await jiwen.getState();
+  await cadence.applyDelta({ connection: 0.55, poise: 0.4 });
+  const sp = await cadence.getState();
   console.log(bN(sp, toneGrid, { scene: 'contact' }, toneCfg.sceneOverride, toneCfg.proactiveOutlet));
 
   // 落盘
@@ -133,4 +133,4 @@ async function step(minutes, note) {
   console.log('\n轨迹已写入 ' + out);
 })().catch((e) => { console.error('SIM CRASH', e); process.exit(1); });
 
-async function snap() { const s = await jiwen.getState(); return { c: +s.connection.toFixed(3), p: +s.poise.toFixed(3), v: +s.valence.toFixed(3), a: +s.arousal.toFixed(3), i: +s.immersion.toFixed(3) }; }
+async function snap() { const s = await cadence.getState(); return { c: +s.connection.toFixed(3), p: +s.poise.toFixed(3), v: +s.valence.toFixed(3), a: +s.arousal.toFixed(3), i: +s.immersion.toFixed(3) }; }

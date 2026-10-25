@@ -115,7 +115,7 @@ const samples = [
 for (const [name, cl, tier] of samples) {
   const body = deCluster((cfg.profiles[cl][tier] || [])[0] || '');
   w(`【${name}】`);
-  w('【积温·此刻】');
+  w('【潮汐基频·此刻】');
   w(DRAFT[cl]);
   w(body);
   w(BLOCK_TAIL);

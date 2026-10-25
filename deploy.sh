@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # ════════════════════════════════════════════════════
-#  积温桥 · VPS 部署脚本
+#  潮汐基频桥 · VPS 部署脚本
 #
 #  在 VPS 上以 root 执行：
 #    bash deploy.sh
 #
 #  作用：
 #    1. 检查 Node 版本（需要 >= 20）
-#    2. 安装到 /root/jiwen-bridge
+#    2. 安装到 /root/cadence-bridge
 #    3. 生成 systemd unit 并启用
 #    4. 启动并做健康检查
 # ════════════════════════════════════════════════════
@@ -15,10 +15,10 @@
 set -e
 
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
-DEST="/root/jiwen-bridge"
-SERVICE="jiwen-bridge"
+DEST="/root/cadence-bridge"
+SERVICE="cadence-bridge"
 
-echo "═══ 积温桥部署 ═══"
+echo "═══ 潮汐基频桥部署 ═══"
 
 # ── 1. Node 检查 ──
 if ! command -v node >/dev/null 2>&1; then
@@ -53,7 +53,7 @@ fi
 # ── 4. systemd unit ──
 cat > /etc/systemd/system/${SERVICE}.service <<EOF
 [Unit]
-Description=Jiwen Bridge - 积温注入桥 (Serein front proxy)
+Description=Cadence Bridge - 潮汐基频注入桥 (Lattice front proxy)
 After=network.target docker.service
 
 [Service]

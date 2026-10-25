@@ -1,20 +1,20 @@
-# 积温判定器 Prompt — Harlan 版
+# 潮汐基频判定器 Prompt — Harlan 版
 
 > 说明：这是「对话分析小模型」的 prompt。它读最近 4 条对话，输出一组 delta 值。
-> 判定标准由我们定死，积温引擎只负责把它叠加到五轴上。
+> 判定标准由我们定死，潮汐基频引擎只负责把它叠加到五轴上。
 
 ---
 
 ## 一、语义重映射说明（给维护者看，不进 prompt）
 
-用户 AI 原设计输出 `{gravity, shelter, connection}` 三轴，但积温引擎只有五轴。
+用户 AI 原设计输出 `{gravity, shelter, connection}` 三轴，但潮汐基频引擎只有五轴。
 映射关系如下：
 
-| 用户 AI 的轴 | 语义 | 映射到积温 | 理由 |
+| 用户 AI 的轴 | 语义 | 映射到潮汐基频 | 理由 |
 |---|---|---|---|
-| `gravity`（定力与冷却，0 → -1 单向） | 触及原则/严肃交锋/恶性背信时向负走；对方放软时缓慢回升 | `pride`（双向 -1~+1） | 积温的 pride 就是"防御/端着"轴。负面交锋 → pride 上升（防御启动）；对方放软 → pride 下降（卸下盔甲）。**注意方向相反：gravity 负 = pride 正** |
+| `gravity`（定力与冷却，0 → -1 单向） | 触及原则/严肃交锋/恶性背信时向负走；对方放软时缓慢回升 | `pride`（双向 -1~+1） | 潮汐基频的 pride 就是"防御/端着"轴。负面交锋 → pride 上升（防御启动）；对方放软 → pride 下降（卸下盔甲）。**注意方向相反：gravity 负 = pride 正** |
 | `shelter`（庇护水位，0 → 1） | 对方疲惫/卸下防备时上升 | `valence`（+）+ `arousal`（-） | 庇护 = 温暖且安静。温暖 → valence 正；安静/低能量 → arousal 负 |
-| `connection`（连接需求，0 → 1） | 有实质发言时清零 | `connection`（同名同轴） | 直接沿用；积温另有 `resetConnection()`，判定器给的 connection delta 只是微调 |
+| `connection`（连接需求，0 → 1） | 有实质发言时清零 | `connection`（同名同轴） | 直接沿用；潮汐基频另有 `resetConnection()`，判定器给的 connection delta 只是微调 |
 | （无对应） | — | `immersion` | 由 `setActivity()` 驱动，判定器不管 |
 
 **核心原则**：判定器只分析「对方的话对 Harlan 的冲击」，**不分析 Harlan 自己的回复语气**（那是回复模型的事，小模型读不懂大模型的口是心非）。
@@ -134,7 +134,7 @@ connection（连接需求）：负 = 被满足了，不急着找她（最多 -0.
 try {
   const raw = await callLLM(...);
   const delta = JSON.parse(raw.replace(/```json|```/g, '').trim());
-  await jiwen.applyDelta({
+  await cadence.applyDelta({
     pride:      clamp(delta.pride,      -0.30, 0.30),
     valence:    clamp(delta.valence,    -0.30, 0.30),
     arousal:    clamp(delta.arousal,    -0.30, 0.30),
@@ -142,7 +142,7 @@ try {
   });
 } catch (e) {
   // 失败时给保守降幅，防止 connection 只涨不降
-  await jiwen.applyDelta({ connection: -0.15 });
+  await cadence.applyDelta({ connection: -0.15 });
 }
 ```
 

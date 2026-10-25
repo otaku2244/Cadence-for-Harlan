@@ -3,7 +3,7 @@
 // 对照实验：作者原生 gait vs 我们改过的参数
 //
 // 目的（2026-10-10）：
-//   diff 证实 vendor/jiwen.js 与作者最新版 **MD5 完全一致**，
+//   diff 证实 vendor/cadence.js 与作者最新版 **MD5 完全一致**，
 //   我们从未改过引擎源码。问题 100% 出在参数选择上。
 //
 //   作者源码里有一组成对机制（注释「改1/改2/改3」）：
@@ -19,7 +19,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = '/root/jiwen-bridge';
+const ROOT = '/root/cadence-bridge';
 const envTxt = fs.readFileSync(path.join(ROOT, '.env'), 'utf8');
 const get = (k, d) => {
   const m = envTxt.match(new RegExp('^' + k + '=(.*)$', 'm'));
@@ -44,7 +44,7 @@ console.log('  CONNECTION_RATE=' + BASE.connectionRate +
   '  VALENCE_ACTIVITY_THRESHOLD=' + BASE.valenceActivityThreshold);
 console.log();
 
-const { createJiwen } = require(path.join(ROOT, 'vendor/jiwen.js'));
+const { createCadence } = require(path.join(ROOT, 'vendor/cadence.js'));
 const MIN_PER_TICK = 5;
 
 // 配置矩阵
@@ -59,7 +59,7 @@ const CONFIGS = [
 const TOTAL = 2880;
 
 async function runCase(cfg) {
-  const jiwen = createJiwen({
+  const cadence = createCadence({
     getLastMessage: () => null,
     connectionRateFn: () => BASE.connectionRate,
     onSave: async () => {},
@@ -84,8 +84,8 @@ async function runCase(cfg) {
   const extraArgs = path.join(ROOT, '_test');
 
   for (let t = 0; t < TOTAL; t += MIN_PER_TICK) {
-    await jiwen.tick(MIN_PER_TICK);
-    const s = await jiwen.getState();
+    await cadence.tick(MIN_PER_TICK);
+    const s = await cadence.getState();
     const v = Number(s.valence) || 0;
     if (v < minVal) minVal = v;
     if (v > maxVal) maxVal = v;

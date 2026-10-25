@@ -6,7 +6,7 @@
 // 输出：各组参数下，连续 N 天的日均触发次数、首发时刻分布
 // ════════════════════════════════════════════════════
 
-const { createJiwen } = require('../vendor/jiwen.js');
+const { createCadence } = require('../vendor/cadence.js');
 
 // ── 虚拟时钟（必须，否则 minutesSinceLastMsg 算不准）──
 let VNOW = new Date('2026-10-05T00:00:00+08:00').getTime();
@@ -22,7 +22,7 @@ const DAY_MIN = 24 * 60;
 
 // 可调参数组
 // ⚠️ connectionAccel 必须 > 1 才叫"加速"。设成 0.8 反而让增长被 pow 压慢，
-//    设成 0 才是纯线性。这是积温的一个参数陷阱。
+//    设成 0 才是纯线性。这是潮汐基频的一个参数陷阱。
 const configs = [
   { name: '默认 r=0.0007 accel=1.5 delay=30', rate: 0.0007, accel: 1.5, delay: 30 },
   { name: '降速 r=0.0004 accel=1.5 delay=30', rate: 0.0004, accel: 1.5, delay: 30 },
@@ -34,11 +34,11 @@ const configs = [
 async function runOne(cfg) {
   let store = null;
   // 模拟"她最后一次出现"的时间戳。
-  // 关键：积温用 minutesSinceLastMsg 判断是否进入加速段，
+  // 关键：潮汐基频用 minutesSinceLastMsg 判断是否进入加速段，
   // 这个值来自 getLastMessage().timestamp。返回固定的"现在"会让它恒为 0，
   // 导致 accelDelay>0 时永远不加速。这里让它反映真实的沉默时长。
   let lastMsgAt = Date.now();
-  const j = createJiwen({
+  const j = createCadence({
     getLastMessage: () => ({ id: 1, content: 'x', timestamp: new Date(lastMsgAt).toISOString() }),
     connectionRateFn: () => cfg.rate,
     onSave: async (s) => { store = JSON.parse(JSON.stringify(s)); },

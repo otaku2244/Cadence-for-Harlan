@@ -7,7 +7,7 @@
 //   描述层第 2 段被钉死在同一档；且 c 涨得越快，「找你」(contact) 越容易
 //   抢在 poise 顶格之前触发 —— 冲浪反而变少。
 //
-// 引擎里 find_activity 有第二条**互不相干**的入口（vendor/jiwen.js:507）：
+// 引擎里 find_activity 有第二条**互不相干**的入口（vendor/cadence.js:507）：
 //   valence ≤ thresholds.valenceActivity 且 immersion < 0.3 → low_valence
 //   ② 完全不看 connection。vendor 把阈值默认成 -1.0（永不触发）。
 //
@@ -18,7 +18,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { createJiwen } = require('../vendor/jiwen.js');
+const { createCadence } = require('../vendor/cadence.js');
 
 const results = [];
 function check(name, cond, detail) {
@@ -34,7 +34,7 @@ const NEUTRAL = {
 
 function makeEngine(opts = {}) {
   let store = null;
-  return createJiwen({
+  return createCadence({
     getLastMessage: () => null,
     connectionRateFn: () => (opts.rate === undefined ? 0 : opts.rate),
     onSave: async (s) => { store = JSON.parse(JSON.stringify(s)); },
@@ -193,9 +193,9 @@ const r3 = (x) => Math.round(x * 1000) / 1000;
     /VALENCE_ACTIVITY_THRESHOLD \|\| '-1\.0'/.test(code));
   check('C2 CFG 暴露 ACTIVITY_CONNECTION_RELIEF（默认 0）',
     /ACTIVITY_CONNECTION_RELIEF \|\| '0'/.test(code));
-  check('C3 thresholds.valenceActivity 真被传进 createJiwen',
+  check('C3 thresholds.valenceActivity 真被传进 createCadence',
     /valenceActivity:\s*CFG\.valenceActivityThreshold/.test(code));
-  check('C4 rates.activityConnectionRelief 真被传进 createJiwen',
+  check('C4 rates.activityConnectionRelief 真被传进 createCadence',
     /activityConnectionRelief:\s*CFG\.activityConnectionRelief/.test(code));
   check('C5 注释里写明了「阈值必须 ≥ valenceSetpoint」这个耦合',
     /必须 \*\*≥ valenceSetpoint|阈值必须/.test(src));

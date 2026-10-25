@@ -5,8 +5,8 @@
 //   Q4: 她「间歇说话」时，唤醒间隔是多少？（真实日常场景）
 // ============================================================
 const path = require('path');
-const ROOT = '/root/jiwen-bridge';
-const { createJiwen } = require(path.join(ROOT, 'vendor/jiwen.js'));
+const ROOT = '/root/cadence-bridge';
+const { createCadence } = require(path.join(ROOT, 'vendor/cadence.js'));
 
 const CFG = {
   connectionRate: 0.0025, connectionAccel: 1.5, accelDelay: 30,
@@ -18,7 +18,7 @@ const CFG = {
 };
 
 function mkEngine() {
-  return createJiwen({
+  return createCadence({
     getLastMessage: () => null,
     connectionRateFn: () => CFG.connectionRate,
     onSave: async () => {},

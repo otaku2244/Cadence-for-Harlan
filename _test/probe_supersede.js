@@ -2,14 +2,14 @@
 // probe_supersede.js —— 验证「先入队的通知会不会被后入队的顶掉」到底会不会发生。
 //
 // 背景：`lib/mcp.js` 的 get_pending_notice 一次返回全部，`payload.notice = list[0]`
-// 取的是**最旧**那条；`jiwen_pull.js` 只投这一条，其余进 `DROPPED=` 日志。
+// 取的是**最旧**那条；`cadence_pull.js` 只投这一条，其余进 `DROPPED=` 日志。
 // 于是有个问题：`contact`（找她）会不会被更晚入队的 `find_activity`（独处）顶掉？
 //
 // 这个脚本不猜，直接拿真引擎 + 桥的真实参数跑 7 天，逐 tick 记录。
 //
 // 用法：node _test/probe_supersede.js
 
-const { createJiwen } = require('../vendor/jiwen.js');
+const { createCadence } = require('../vendor/cadence.js');
 
 const TICK_MIN = 5;          // 桥的 TICK_MINUTES
 const POLL_MIN = 30;         // Operit 工作流的 interval
@@ -36,7 +36,7 @@ async function simulate(days, pollMin) {
     lastChatMessageId: null, lastBotMessageId: null, userStatus: 'active',
   };
 
-  const jiwen = createJiwen({
+  const cadence = createCadence({
     getLastMessage: () => null,                   // 桥就是这么传的
     connectionRateFn: () => 0.0007,
     onSave: async (s) => { Object.assign(state, s); },
@@ -51,7 +51,7 @@ async function simulate(days, pollMin) {
     },
     verbose: false, onLog: () => {},
   });
-  await jiwen.load();
+  await cadence.load();
 
   const rec = {
     ticks: 0, contactFires: 0, findFires: 0,
@@ -94,8 +94,8 @@ async function simulate(days, pollMin) {
     for (const plan of CHAT_PLAN) {
       for (let T = 0; T < plan.turns; T++) {
         if (minOfDay === plan.at + T * 5) {
-          await jiwen.applyDelta({ connection: -0.35 });
-          await jiwen.applyDelta({ ...plan.delta });
+          await cadence.applyDelta({ connection: -0.35 });
+          await cadence.applyDelta({ ...plan.delta });
           lastUserAtMin = abs;
         }
       }
@@ -103,8 +103,8 @@ async function simulate(days, pollMin) {
 
     // ── tick ──
     rec.ticks++;
-    const triggers = (await jiwen.tick(TICK_MIN)).filter((t) => t.action !== 'observation');
-    const st = await jiwen.getState();
+    const triggers = (await cadence.tick(TICK_MIN)).filter((t) => t.action !== 'observation');
+    const st = await cadence.getState();
 
     const hasContact = triggers.some((t) => t.action === 'contact');
     const hasFind = triggers.some((t) => t.action === 'find_activity');
@@ -128,7 +128,7 @@ async function simulate(days, pollMin) {
         queue.push({ scene: t.action, reason: t.reason || null, at: abs });
         rec.maxQueue = Math.max(rec.maxQueue, queue.length);
       }
-      if (t.action === 'contact') await jiwen.applyDelta({ connection: CONTACT_DECAY });
+      if (t.action === 'contact') await cadence.applyDelta({ connection: CONTACT_DECAY });
     }
 
     // ── Operit 每 pollMin 分钟来拉一次 ──

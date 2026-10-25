@@ -3,14 +3,14 @@
 // 跑法：node _test/patch_bridge_drift.js
 const fs = require('fs');
 
-const P = '/root/jiwen-bridge/bridge.js';
+const P = '/root/cadence-bridge/bridge.js';
 const src = fs.readFileSync(P, 'utf8');
 
 const CFG_ANCHOR = "  activityConnectionRelief: parseFloat(process.env.ACTIVITY_CONNECTION_RELIEF || '0'),";
 const CFG_ADD = [
   '',
   '  // ── 沉降路：想念久了心情自然下沉（vendor 原生，默认关）2026-10-09 ──',
-  '  // vendor/jiwen.js:339 —— drift = rate × mins × connection，与 connection 成正比。',
+  '  // vendor/cadence.js:339 —— drift = rate × mins × connection，与 connection 成正比。',
   '  // 配 valenceActivity 远低于 valenceSetpoint 使用：不依赖 poise 高位，与 contact 天然错开。',
   "  valenceConnectionDriftThreshold: parseFloat(process.env.VALENCE_CONNECTION_DRIFT_THRESHOLD || '0.0'),",
   "  valenceConnectionDriftRate: parseFloat(process.env.VALENCE_CONNECTION_DRIFT_RATE || '0'),",

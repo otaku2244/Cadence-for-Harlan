@@ -2,13 +2,13 @@
 // connection 驱动专项（2026-10-08）：撤掉 resetConnection 之后，connection 是否真的能被判定器推动。
 // 用法：node _test/connection_check.js
 //
-// 背景：桥原先在每轮真人开口时调 jiwen.resetConnection()（= `state.connection` 硬置 0）。
+// 背景：桥原先在每轮真人开口时调 cadence.resetConnection()（= `state.connection` 硬置 0）。
 //   两处损害：
 //     ① 判定器返 connection:-0.15（她热情/认真）→ clamp(0-0.15, 0, 1) = 0 —— **负向全废**；
 //     ② 判定器返 +0.15（她敷衍）→ 只能到 0.15，够不到第一个消费点 0.20 —— **正向也等于废**。
 //   而作者原设计就是「回复带来的 connection 降幅由 LLM 判定这轮对话内容接管」：
-//     vendor/jiwen.js:41   connectionOnReply 已标 [已弃用]「现由 LLM delta 接管」
-//     vendor/jiwen.js:277  「连接需求降幅现由外部 LLM 分析…通过 applyDelta 注入」
+//     vendor/cadence.js:41   connectionOnReply 已标 [已弃用]「现由 LLM delta 接管」
+//     vendor/cadence.js:277  「连接需求降幅现由外部 LLM 分析…通过 applyDelta 注入」
 //   撤掉后 connection 由「判定器 delta + tick 漂移」驱动；判定没跑成时
 //   由 bridge.js 的 replyRelief() 兜底一顿 -CONNECTION_RELIEF。
 //
@@ -19,11 +19,11 @@
 
 const fs = require('fs');
 const path = require('path');
-const { createJiwen } = require('../vendor/jiwen.js');
+const { createCadence } = require('../vendor/cadence.js');
 
 // 与 bridge.js CFG 的默认值同步（改一边记得改另一边）
 const RELIEF = 0.35;
-// vendor 的三个消费阈值（vendor/jiwen.js:113-120 的 thresholds 默认值）
+// vendor 的三个消费阈值（vendor/cadence.js:113-120 的 thresholds 默认值）
 const OBSERVATION = 0.20;
 const CONSIDER = 0.35;
 const FORCE = 0.50;
@@ -36,7 +36,7 @@ function check(name, cond, detail) {
 
 function makeEngine() {
   let store = null;
-  return createJiwen({
+  return createCadence({
     getLastMessage: () => null,
     connectionRateFn: () => 0,
     onSave: async (s) => { store = JSON.parse(JSON.stringify(s)); },
@@ -131,7 +131,7 @@ const r3 = (x) => Math.round(x * 1000) / 1000;
   console.log('\nC. bridge.js 接线（静态断言）\n');
   const src = fs.readFileSync(path.join(__dirname, '..', 'bridge.js'), 'utf8');
 
-  check('bridge 不再调 jiwen.resetConnection()', !/jiwen\.resetConnection\(/.test(src));
+  check('bridge 不再调 cadence.resetConnection()', !/cadence\.resetConnection\(/.test(src));
   check('replyRelief 有定义', /function replyRelief\(reason\)/.test(src));
   check('兜底走 applyDelta(-CFG.connectionRelief)',
     /applyDelta\(\{ connection: -CFG\.connectionRelief \}\)/.test(src));

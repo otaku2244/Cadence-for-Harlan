@@ -21,7 +21,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { createJiwen } = require('../vendor/jiwen.js');
+const { createCadence } = require('../vendor/cadence.js');
 const { createToneGrid } = require('../vendor/tone-grid.js');
 const { createDescriber } = require('../lib/describe.js');
 const { loadEnvFile } = require('../lib/env.js');
@@ -65,7 +65,7 @@ global.Date = FakeDate;
 
 // ── 状态容器 ──
 let store = null;
-const jiwen = createJiwen({
+const cadence = createCadence({
   getLastMessage: () => ({ id: 1, content: 'x', timestamp: new RealDate(VNOW).toISOString() }),
   connectionRateFn: () => parseFloat(process.env.CONNECTION_RATE || '0.0007'),
   onSave: async (s) => { store = JSON.parse(JSON.stringify(s)); },
@@ -204,11 +204,11 @@ async function advanceTo(dayIdx, hour) {
   while (VNOW < target) {
     const stepMs = Math.min(TICK * 60000, target - VNOW);
     VNOW += stepMs;
-    const triggers = await jiwen.tick(stepMs / 60000);
+    const triggers = await cadence.tick(stepMs / 60000);
     if (store && store.connection > peakConn) peakConn = store.connection;
     for (const t of triggers) {
       if (t.action === 'contact') {
-        await jiwen.applyDelta({ connection: -0.35 });
+        await cadence.applyDelta({ connection: -0.35 });
         eventLog.push({ time: fmt(new RealDate(VNOW)), action: 'contact', reason: t.reason || '', peak: +peakConn.toFixed(3) });
       } else if (t.action === 'find_activity') {
         eventLog.push({ time: fmt(new RealDate(VNOW)), action: 'find_activity', reason: t.reason || '', peak: +peakConn.toFixed(3) });
@@ -221,7 +221,7 @@ async function advanceTo(dayIdx, hour) {
 // ── 主流程 ──
 const t0 = VNOW;
 (async () => {
-  await jiwen.load();
+  await cadence.load();
 
   if (!OFFLINE && !cfg.llmKey) {
     console.error('缺少 LLM_KEY，且未指定 OFFLINE=1。请补 .env 或改跑 OFFLINE=1。');
@@ -239,7 +239,7 @@ const t0 = VNOW;
 
     // 2. 她开口 → 判定器 delta（桥的真实行为；判定没跑成时兜底 -0.35）
     const beforeState = { ...store };
-    await jiwen.resetConnection();
+    await cadence.resetConnection();
 
     // 3. 判定（真实或替身）
     let delta = null;
@@ -257,7 +257,7 @@ const t0 = VNOW;
     }
 
     // 4. 叠加 delta
-    if (delta) await jiwen.applyDelta(delta);
+    if (delta) await cadence.applyDelta(delta);
 
     // 5. 记录
     const s = store;

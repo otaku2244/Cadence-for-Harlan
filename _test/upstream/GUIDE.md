@@ -1,6 +1,6 @@
-# 积温部署指南 — 让 AI 角色拥有持续情绪
+# 潮汐基频部署指南 — 让 AI 角色拥有持续情绪
 
-> jiwen 是数学引擎。这篇指南教你把它变成一个**完整的情绪驱动系统**——不只是什么时候主动开口，更是每句回复用什么语气、什么态度、什么温度来面对 user。
+> cadence 是数学引擎。这篇指南教你把它变成一个**完整的情绪驱动系统**——不只是什么时候主动开口，更是每句回复用什么语气、什么态度、什么温度来面对 user。
 
 ---
 
@@ -34,7 +34,7 @@ LLM 是无状态的。每次调用时，它从 system prompt + 聊天记录重�
                               │ deltas
                               ▼
 ┌──────────┐   tick()   ┌─────────┐   getStyleGuidance()   ┌──────────────┐
-│  jiwen   │──────────▶│  state  │───────────────────────▶│  LLM reply   │
+│  cadence   │──────────▶│  state  │───────────────────────▶│  LLM reply   │
 │  数学引擎 │◀──────────│  五轴数值 │                        │  prompt 注入  │
 └──────────┘ applyDelta└─────────┘                        └──────────────┘
      │                        ▲
@@ -59,15 +59,15 @@ LLM 是无状态的。每次调用时，它从 system prompt + 聊天记录重�
 ### 安装
 
 ```bash
-npm install @clarashafiq/jiwen
+npm install @clarashafiq/cadence
 ```
 
 ### 创建实例
 
 ```js
-const { createJiwen } = require('@clarashafiq/jiwen');
+const { createCadence } = require('@clarashafiq/cadence');
 
-const jiwen = createJiwen({
+const cadence = createCadence({
   // ── 必填：读取对方最后一条消息 ──
   getLastMessage: () => {
     const row = db.prepare(
@@ -108,28 +108,28 @@ const jiwen = createJiwen({
 ```js
 // 每 5 分钟 tick 一次
 setInterval(async () => {
-  const triggers = await jiwen.tick(5);
+  const triggers = await cadence.tick(5);
 
   for (const t of triggers) {
     if (t.action === 'contact') {
       // 角色想主动开口 → 调 LLM 生成开口内容
-      const ctx = jiwen.getPromptContext();
-      const style = jiwen.getStyleGuidance();
+      const ctx = cadence.getPromptContext();
+      const style = cadence.getStyleGuidance();
       const reply = await callLLM({ systemPrompt: ctx + '\n' + style, ... });
 
       // 开口 ≠ 被回复。只做部分缓解，不归零。
       // 对方真正回应后才调 resetConnection()。
-      await jiwen.applyDelta({ connection: -0.35 });
+      await cadence.applyDelta({ connection: -0.35 });
     }
     if (t.action === 'find_activity') {
       // 嘴硬不想开口，或者心情不好需要分散注意力
-      await jiwen.setActivity('reading', '某本书');
+      await cadence.setActivity('reading', '某本书');
     }
   }
 }, 5 * 60 * 1000);
 ```
 
-到这一步，你有一个**会主动开口的角色**。这是 jiwen README 里介绍的核心用途。
+到这一步，你有一个**会主动开口的角色**。这是 cadence README 里介绍的核心用途。
 
 接下来是这篇指南要教的：让角色的**每一句日常回复**也被状态驱动。
 
@@ -139,7 +139,7 @@ setInterval(async () => {
 
 这是整个系统里最需要你亲自设计的部分。**它把一个多维数值状态翻译成 LLM 能执行的说话指令。**
 
-> **不想从零写代码？** jiwen 提供了 `tone-grid` 模块——预置的 9 簇 × 5 档网格结构 + 通用默认文案。你只需要替换 JSON 配置文件里的文字。见 [README 语调网格章节](../README.md#语调网格推荐)。下面的内容教你理解网格原理和写好每一格。
+> **不想从零写代码？** cadence 提供了 `tone-grid` 模块——预置的 9 簇 × 5 档网格结构 + 通用默认文案。你只需要替换 JSON 配置文件里的文字。见 [README 语调网格章节](../README.md#语调网格推荐)。下面的内容教你理解网格原理和写好每一格。
 
 ### 为什么是 V x A x pride 三维？
 
@@ -279,12 +279,12 @@ function getUnifiedGuidance(state) {
 }
 ```
 
-### 注册到 jiwen
+### 注册到 cadence
 
-写完 `getUnifiedGuidance` 之后，需要告诉 jiwen 用你的函数而不是默认文案：
+写完 `getUnifiedGuidance` 之后，需要告诉 cadence 用你的函数而不是默认文案：
 
 ```js
-const jiwen = createJiwen({
+const cadence = createCadence({
   // ...其他配置（getLastMessage, connectionRateFn, onSave, onLoad）
 
   // 覆盖默认的状态描述和语调指引
@@ -293,7 +293,7 @@ const jiwen = createJiwen({
 });
 ```
 
-现在调 `jiwen.getStyleGuidance()` 返回的就是你的语调网格查表结果了。
+现在调 `cadence.getStyleGuidance()` 返回的就是你的语调网格查表结果了。
 
 ---
 
@@ -337,10 +337,10 @@ function getFullGuidance(state, mode) {
 }
 ```
 
-然后更新 jiwen 注册：
+然后更新 cadence 注册：
 
 ```js
-const jiwen = createJiwen({
+const cadence = createCadence({
   // ...
   getStyleGuidance: (state) => getFullGuidance(state, 'reactive'),
   getPromptContext:  (state) => getFullGuidance(state, 'proactive'),
@@ -364,10 +364,10 @@ async function onUserMessage(msg) {
   await analyzeChatSegment();
 
   // 3. 连接需求归零（她回来了，想念被满足）
-  await jiwen.resetConnection();
+  await cadence.resetConnection();
 
   // 4. 生成回复——语调由当前状态驱动
-  const style = jiwen.getStyleGuidance();
+  const style = cadence.getStyleGuidance();
   const reply = await callLLM({
     systemPrompt: `你是 XXXX。你此刻的说话方式：\n${style}`,
     messages: [...chatHistory, { role: 'user', content: msg }],
@@ -586,7 +586,7 @@ try {
   const raw = await callLLM({ ... });
   const delta = JSON.parse(raw.replace(/```json|```/g, '').trim());
 
-  await jiwen.applyDelta({
+  await cadence.applyDelta({
     pride:      clamp(delta.pride,      -0.3, 0.3),
     valence:    clamp(delta.valence,    -0.3, 0.3),
     arousal:    clamp(delta.arousal,    -0.3, 0.3),
@@ -595,7 +595,7 @@ try {
 } catch (e) {
   // LLM 挂了或返回了非 JSON → 给一个保守降幅
   // 防止 connection 只涨不降导致角色越来越焦虑
-  await jiwen.applyDelta({ connection: -0.15 });
+  await cadence.applyDelta({ connection: -0.15 });
 }
 
 function clamp(v, min, max) {
@@ -673,9 +673,9 @@ node simulate.js
 
 ## 总结：你最少需要做的事
 
-1. `npm install @clarashafiq/jiwen`，创建实例，挂上 cron
+1. `npm install @clarashafiq/cadence`，创建实例，挂上 cron
 2. 写你的 `CORE_PROFILES`（4 个象限 x 3 档 pride，每档 1 句话）
-3. 写你的 `getUnifiedGuidance` 查表函数，注册到 jiwen
+3. 写你的 `getUnifiedGuidance` 查表函数，注册到 cadence
 4. 写你的分析 prompt（重点是情绪规则 + 信号词映射）
 5. 在消息处理流程里按顺序调用：分析 → reset → 注入语调 → 生成回复
 6. 跑两天，读日志和 simulate 输出，调整规则和参数
@@ -684,4 +684,4 @@ node simulate.js
 
 ---
 
-jiwen 是数学。这篇指南是工程。你的角色是内容。三样拼起来，它就不再是一个每轮从零开始的应答机了。
+cadence 是数学。这篇指南是工程。你的角色是内容。三样拼起来，它就不再是一个每轮从零开始的应答机了。

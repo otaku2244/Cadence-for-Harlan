@@ -1,7 +1,7 @@
 'use strict';
 // 单配置逐 tick trace：打印每一次引擎触发与冷却后放行
 // 用法：RATE=0.002 RATES='{"poiseDefendThreshold":0.08}' MINUTES=3000 node trace_rhythm.js
-const { createJiwen } = require('../vendor/jiwen.js');
+const { createCadence } = require('../vendor/cadence.js');
 
 let VNOW = new Date('2026-10-05T00:00:00+08:00').getTime();
 const RealDate = Date;
@@ -20,7 +20,7 @@ const THRESHOLDS = JSON.parse(process.env.THRESHOLDS || '{}');
 
 (async () => {
   let store = null;
-  const j = createJiwen({
+  const j = createCadence({
     getLastMessage: () => ({ id: 1, content: 'x', timestamp: new RealDate(VNOW - 86400000).toISOString() }),
     connectionRateFn: () => RATE,
     onSave: async (s) => { store = s; },

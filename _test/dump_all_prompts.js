@@ -27,7 +27,7 @@ const POISE = { 1: -0.05, 2: 0.2, 3: 0.4, 4: 0.65, 5: 0.9 };
 const out = [];
 function w(s) { out.push(s); }
 
-w('# 积温桥 · 全部提示词穷举清单');
+w('# 潮汐基频桥 · 全部提示词穷举清单');
 w('');
 w('本文件由 _test/dump_all_prompts.js 自动生成，不要手改。');
 w('');

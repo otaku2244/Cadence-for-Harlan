@@ -1,10 +1,10 @@
 'use strict';
 // diag_prompt.js —— 当前提示词实现相对原作者设计的偏离清单（穷举 + 可复跑）
 //
-// 用法（jiwen-bridge 目录下）: node _test/diag_prompt.js
+// 用法（cadence-bridge 目录下）: node _test/diag_prompt.js
 //
 // 三个对照对象：
-//   作者默认  vendor/jiwen.js:743-905   defaultPromptContext() / defaultStyleGuidance()
+//   作者默认  vendor/cadence.js:743-905   defaultPromptContext() / defaultStyleGuidance()
 //   作者 demo docs/index.html:236-267   ctx() / sty()
 //   我们      config/tone-harlan.json + lib/describe.js + lib/inject-text.js
 //
@@ -172,7 +172,7 @@ hr('[6] 作者四段描述层 —— 逐段可达性');
   const noFake = !immLines(st(0, 0, 0, 0, 0.4, null)).includes(DOING)
     && !immLines(st(0, 0, 0, 0, 0.4, { type: 'search', at: ACT.at })).includes(DOING);
   console.log(`  ④ 段4 沉浸（作者第 4 段 immersion）              doing=${busyOn} 死带不出=${deadOut} idle=${idleOn} 不编造=${noFake}`);
-  console.log('  作者默认实现里四层全部存在（vendor/jiwen.js:751-801）。');
+  console.log('  作者默认实现里四层全部存在（vendor/cadence.js:751-801）。');
   console.log('  段4 的真来源：冲浪 spawn 成功后登记一次活动（lib/activity.js），immersion = 0.4；');
   console.log('  之后按 0.01/分钟自然衰减 → 10 分钟后落到死带，30 分钟后回到 idle。');
 }

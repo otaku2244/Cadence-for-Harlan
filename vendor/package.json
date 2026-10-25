@@ -1,11 +1,11 @@
 {
-  "name": "@clarashafiq/jiwen",
+  "name": "@clarashafiq/cadence",
   "version": "0.4.0",
-  "description": "积温 — 不靠概率骰子的 AI 角色主动意识引擎。五轴连续状态 + 数学漂移 + 阈值触发 + 参数模拟器",
-  "main": "jiwen.js",
+  "description": "潮汐基频 — 不靠概率骰子的 AI 角色主动意识引擎。五轴连续状态 + 数学漂移 + 阈值触发 + 参数模拟器",
+  "main": "cadence.js",
   "license": "MIT",
   "files": [
-    "jiwen.js",
+    "cadence.js",
     "simulate.js",
     "tone-grid.js",
     "README.md",
@@ -25,6 +25,6 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ClaraShafiq/jiwen.git"
+    "url": "git+https://github.com/ClaraShafiq/cadence.git"
   }
 }

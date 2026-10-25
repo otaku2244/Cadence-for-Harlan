@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-阉割 find_activity —— 范围：只动积温侧（vendor + bridge 积温消费分支 + 我们加的养 find_activity 的配置）
+阉割 find_activity —— 范围：只动潮汐基频侧（vendor + bridge 潮汐基频消费分支 + 我们加的养 find_activity 的配置）
     冲浪本体（spawnSurf / /surf/finding / CFG.surf* / .env SURF_*）一律保留不动。
 
 幂等：以 MARK 注释为标记。
-用法：python3 cut_find_activity.py /root/jiwen-bridge
+用法：python3 cut_find_activity.py /root/cadence-bridge
 """
 import sys, os, io
 
-ROOT = sys.argv[1] if len(sys.argv) > 1 else '/root/jiwen-bridge'
+ROOT = sys.argv[1] if len(sys.argv) > 1 else '/root/cadence-bridge'
 MARK = '[CUT-FIND-ACTIVITY 2026-10-10]'
 
 def read(p):
@@ -28,14 +28,14 @@ def rep_once(text, old, new, tag):
     return text.replace(old, new, 1)
 
 # ══════════════════════════════════════════════════════════════
-# 1) vendor/jiwen.js
+# 1) vendor/cadence.js
 # ══════════════════════════════════════════════════════════════
-vpath = os.path.join(ROOT, 'vendor', 'jiwen.js')
+vpath = os.path.join(ROOT, 'vendor', 'cadence.js')
 v = read(vpath)
 changed = False
 
 if '// ' + MARK in v or '// ' + MARK in v:
-    print('[SKIP] vendor/jiwen.js 已阉割过（检测到 MARK）')
+    print('[SKIP] vendor/cadence.js 已阉割过（检测到 MARK）')
 else:
     # ---- 1a. 路线 A：pride_block → 直接 contact ----
     old_a = """    if (c >= thresholds.considerContact && c < thresholds.forceContact) {
@@ -166,7 +166,7 @@ else:
 
     write(vpath, v)
     changed = True
-    print('[OK] vendor/jiwen.js 已阉割')
+    print('[OK] vendor/cadence.js 已阉割')
 
 # ══════════════════════════════════════════════════════════════
 # 2) bridge.js —— 删 find_activity 消费分支（保留 spawnSurf 定义与 /surf/finding）

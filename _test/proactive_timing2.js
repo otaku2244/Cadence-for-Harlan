@@ -10,8 +10,8 @@
 //      —— 线上 POISE_DEFEND_THRESHOLD=1.0，c 上限也是 1.0，critical
 // ============================================================
 const path = require('path');
-const ROOT = '/root/jiwen-bridge';
-const { createJiwen } = require(path.join(ROOT, 'vendor/jiwen.js'));
+const ROOT = '/root/cadence-bridge';
+const { createCadence } = require(path.join(ROOT, 'vendor/cadence.js'));
 
 const CFG = {
   connectionRate: 0.0025,
@@ -42,7 +42,7 @@ function inQuiet(minuteOfDay) {
 }
 
 async function simulate(startLocalHour, hours) {
-  const jiwen = createJiwen({
+  const cadence = createCadence({
     getLastMessage: () => null,
     connectionRateFn: () => CFG.connectionRate,
     onSave: async () => {},
@@ -58,7 +58,7 @@ async function simulate(startLocalHour, hours) {
       accelDelay: CFG.accelDelay,
     },
   });
-  await jiwen.getState();
+  await cadence.getState();
 
   const TICK = CFG.tickMinutes;
   const TOTAL = hours * 60;
@@ -67,8 +67,8 @@ async function simulate(startLocalHour, hours) {
   let count = 0;
 
   for (let t = 0; t <= TOTAL; t += TICK) {
-    await jiwen.tick(TICK);
-    const s = await jiwen.getState();
+    await cadence.tick(TICK);
+    const s = await cadence.getState();
     const c = s.connection, p = s.poise, i = s.immersion;
 
     const localMin = ((startLocalHour * 60) + t) % (24 * 60);

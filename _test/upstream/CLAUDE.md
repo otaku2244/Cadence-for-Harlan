@@ -1,24 +1,24 @@
-# 积温 Jiwen — 工作规范
+# 潮汐基频 Cadence — 工作规范
 
 ## 这是什么
 
-积温是一个**纯数学引擎**——五轴连续状态（connection/pride/valence/arousal/immersion）在后台漂移，到阈值触发行为。不靠概率骰子。
+潮汐基频是一个**纯数学引擎**——五轴连续状态（connection/pride/valence/arousal/immersion）在后台漂移，到阈值触发行为。不靠概率骰子。
 
-开源在 `github.com/ClaraShafiq/jiwen`。零依赖，纯 JS。任何人可以拿去给自己的 AI 角色用。
+开源在 `github.com/ClaraShafiq/cadence`。零依赖，纯 JS。任何人可以拿去给自己的 AI 角色用。
 
 ## 和私用实例的关系
 
 ```
-jiwen/jiwen.js          ← 通用引擎（开源）
+cadence/cadence.js          ← 通用引擎（开源）
 private/services/state.js  ← 特定角色的适配层（私密）
 ```
 
-- jiwen 是干净的框架——数学漂移、阈值判断、可注入接口
+- cadence 是干净的框架——数学漂移、阈值判断、可注入接口
 - 私用 `state.js` 是特定角色的实例化——注入中文文案、DB 查询、个性参数
 - **修改核心数学逻辑时，两边都要更新**
 - **修改角色的文案/参数时，只改私用仓库**
 
-## 什么需要同步到 jiwen
+## 什么需要同步到 cadence
 
 | 改动类型 | 同步？ |
 |---------|--------|
@@ -34,10 +34,10 @@ private/services/state.js  ← 特定角色的适配层（私密）
 ## 文件结构
 
 ```
-jiwen/
-├── jiwen.js       # 核心引擎 createJiwen(opts)
+cadence/
+├── cadence.js       # 核心引擎 createCadence(opts)
 ├── tone-grid.js   # 语调网格模块 createToneGrid(opts) — 9簇×5档预置网格
-├── jiwen.test.js  # 测试套件（29项，node jiwen.test.js）
+├── cadence.test.js  # 测试套件（29项，node cadence.test.js）
 ├── simulate.js    # 参数模拟器（事件线 → 轨迹 CSV + 诊断列）
 ├── README.md      # 架构文档 + 快速开始 + API
 ├── GUIDE.md       # 部署指南：完整情绪驱动系统搭建

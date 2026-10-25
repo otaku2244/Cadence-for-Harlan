@@ -2,9 +2,9 @@
 // 端到端验证「沉降路」：从真实 .env 读参数 → 喂真实 vendor 引擎 → 看是否触发 low_valence
 // 跑法：node _test/verify_drift_cfg.js
 const fs = require('fs');
-const { createJiwen } = require('/root/jiwen-bridge/vendor/jiwen.js');
+const { createCadence } = require('/root/cadence-bridge/vendor/cadence.js');
 
-const envTxt = fs.readFileSync('/root/jiwen-bridge/.env', 'utf8');
+const envTxt = fs.readFileSync('/root/cadence-bridge/.env', 'utf8');
 const get = (k, d) => {
   const m = envTxt.match(new RegExp('^' + k + '=(.*)$', 'm'));
   return m ? m[1].trim() : d;
@@ -28,7 +28,7 @@ console.log('');
     lastActivity: null, lastTick: null, lastChatAnalysis: null,
     lastChatMessageId: null, lastBotMessageId: null, userStatus: 'active',
   };
-  const j = createJiwen({
+  const j = createCadence({
     getLastMessage: () => ({ id: 1, content: 'x', timestamp: new Date(Date.now() - 86400000).toISOString() }),
     connectionRateFn: () => parseFloat(get('CONNECTION_RATE', '0.0007')),
     onSave: async (s) => { store = s; },

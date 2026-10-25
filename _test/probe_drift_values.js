@@ -16,7 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = '/root/jiwen-bridge';
+const ROOT = '/root/cadence-bridge';
 const envTxt = fs.readFileSync(path.join(ROOT, '.env'), 'utf8');
 const get = (k, d) => {
   const m = envTxt.match(new RegExp('^' + k + '=(.*)$', 'm'));
@@ -42,7 +42,7 @@ console.log('  driftRate(线上) = ' + ENV.driftRate + '   driftThreshold = ' + 
 console.log('  valenceSetpoint = ' + ENV.valenceSetpoint + '   valenceRegress(引擎默认) = 0.005');
 console.log();
 
-const { createJiwen } = require(path.join(ROOT, 'vendor/jiwen.js'));
+const { createCadence } = require(path.join(ROOT, 'vendor/cadence.js'));
 
 const CANDIDATES = [0.05, 0.010, 0.008, 0.006];
 const MIN_PER_TICK = 5;
@@ -59,7 +59,7 @@ const SCENARIOS = {
 
 async function runCase(driftRate, scenario) {
   let live = null;
-  const jiwen = createJiwen({
+  const cadence = createCadence({
     getLastMessage: () => null,
     connectionRateFn: () => ENV.connectionRate,
     onSave: async () => { /* 不用 onSave，改从 getState 读 */ },
@@ -82,8 +82,8 @@ async function runCase(driftRate, scenario) {
   const samples = [];
 
   for (let t = 0; t < scenario.total; t += MIN_PER_TICK) {
-    await jiwen.tick(MIN_PER_TICK);
-    const s = await jiwen.getState();
+    await cadence.tick(MIN_PER_TICK);
+    const s = await cadence.getState();
     live = s;
 
     // 场景强制 c（覆盖 tick 的自然累积）

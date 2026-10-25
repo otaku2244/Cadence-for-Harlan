@@ -1,14 +1,14 @@
 // ============================================================
-// 积温 — 不靠概率骰子的 AI 角色主动意识引擎
+// 潮汐基频 — 不靠概率骰子的 AI 角色主动意识引擎
 // 五轴连续状态：connection / poise / valence / arousal / immersion
 // 数学漂移 + 阈值触发 + 可注入持久化/消息源/LLM分析
-// 附带 simulate.js 参数模拟器 + jiwen.test.js 测试套件（29项）
+// 附带 simulate.js 参数模拟器 + cadence.test.js 测试套件（29项）
 // ============================================================
 //
 // 更新日志见 LOG.md
 
 /**
- * 创建一个积温引擎实例。
+ * 创建一个潮汐基频引擎实例。
  *
  * @param {Object} opts
  * @param {Object} [opts.initialState]   — 初始状态（默认全 0）
@@ -23,8 +23,8 @@
  * @param {Object}  [opts.persona]       — 人格描述文本（用于默认 prompt context）
  *   { subjectName: '她', selfName: '你', subjectPronoun: '她' }
  */
-function createJiwen(opts) {
-  if (!opts) throw new Error('积温: opts is required');
+function createCadence(opts) {
+  if (!opts) throw new Error('潮汐基频: opts is required');
 
   // ── 轴定义 ──────────────────────
   const axes = opts.axes || {
@@ -179,7 +179,7 @@ function createJiwen(opts) {
         state = { ...DEFAULT_STATE, ...saved };
       }
     } catch (e) {
-      console.warn('[积温] load failed, using defaults:', e.message);
+      console.warn('[潮汐基频] load failed, using defaults:', e.message);
     }
     _loaded = true;
   }
@@ -189,7 +189,7 @@ function createJiwen(opts) {
     try {
       await opts.onSave({ ...state });
     } catch (e) {
-      console.error('[积温] save failed:', e.message);
+      console.error('[潮汐基频] save failed:', e.message);
     }
   }
 
@@ -390,7 +390,7 @@ function createJiwen(opts) {
     // 详细模式：每次 tick 都打状态
     if (verbose) {
       log(
-        `[积温] tick ${mins}min | ` +
+        `[潮汐基频] tick ${mins}min | ` +
         `c:${stateBefore.connection.toFixed(2)}→${state.connection.toFixed(2)} ` +
         `p:${stateBefore.poise.toFixed(2)}→${state.poise.toFixed(2)} ` +
         `v:${stateBefore.valence.toFixed(2)}→${state.valence.toFixed(2)} ` +
@@ -401,12 +401,12 @@ function createJiwen(opts) {
       );
       // 没触发时把「被谁挡的」也打出来——这是调试时最常问的那个问题
       if (triggers.length === 0) {
-        log(`[积温] 未触发原因: ${explainTrigger()}`);
+        log(`[潮汐基频] 未触发原因: ${explainTrigger()}`);
       }
     } else if (triggers.length > 0) {
       // 默认模式：仅阈值触发时打印
       log(
-        `[积温] tick ${mins}min | ` +
+        `[潮汐基频] tick ${mins}min | ` +
         `c:${stateBefore.connection.toFixed(2)}→${state.connection.toFixed(2)} ` +
         `p:${stateBefore.poise.toFixed(2)}→${state.poise.toFixed(2)} ` +
         `v:${stateBefore.valence.toFixed(2)}→${state.valence.toFixed(2)} ` +
@@ -668,14 +668,15 @@ function createJiwen(opts) {
     const i = state.immersion;
 
     const cLabel = c < 0.20 ? '悠闲' : c < 0.35 ? '留意' : c < 0.50 ? '想念' : '焦躁';
-    const pLabel = p > 0.8 ? '沉静' : p > 0.5 ? '收拢' : p > 0.3 ? '自持' : p > 0.1 ? '浅收' : '松开';
+    // [本地改动 2026-10-23] 与 tone-grid 的档位阈值保持同一切分，避免日志与实际档位不一致
+    const pLabel = p > 0.15 ? '自持' : p >= -0.1 ? '平稳' : '松开';
     const vLabel = v > 0.3 ? '开心' : v < -0.3 ? '难受' : '中性';
     const aLabel = a > 0.3 ? '焦躁' : a < -0.3 ? '慵懒' : '平静';
     const iLabel = i > 0.3 && state.lastActivity
       ? `沉浸于${state.lastActivity.type}` : '空闲';
 
     return [
-      `[积温] c:${c.toFixed(2)}(${cLabel}) p:${p.toFixed(2)}(${pLabel}) v:${v.toFixed(2)}(${vLabel}) a:${a.toFixed(2)}(${aLabel}) i:${i.toFixed(2)}(${iLabel})`,
+      `[潮汐基频] c:${c.toFixed(2)}(${cLabel}) p:${p.toFixed(2)}(${pLabel}) v:${v.toFixed(2)}(${vLabel}) a:${a.toFixed(2)}(${aLabel}) i:${i.toFixed(2)}(${iLabel})`,
       `userStatus: ${state.userStatus || 'active'}`,
       state.lastActivity ? `lastActivity: ${state.lastActivity.type} @ ${state.lastActivity.at}` : null,
     ].filter(Boolean).join(' | ');
@@ -834,4 +835,4 @@ function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
 }
 
-module.exports = { createJiwen };
+module.exports = { createCadence };

@@ -35,7 +35,7 @@ const BRIDGE_PORT = 19813;
 const STATE = path.join(TMP, 'state.json');
 const LOG = path.join(TMP, 'bridge.log');
 const TOKEN = 'test-token-at-least-24-chars-abcdef';
-const H = { authorization: 'Bearer ' + TOKEN, 'x-serein-window-id': 'operit' };
+const H = { authorization: 'Bearer ' + TOKEN, 'x-lattice-window-id': 'operit' };
 
 for (const f of [STATE, LOG]) { try { fs.unlinkSync(f); } catch (_) {} }
 

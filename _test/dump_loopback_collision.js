@@ -7,7 +7,7 @@
 //
 // 为什么需要这个脚本：
 //   回环（桥发通知 → Operit 当 user 消息注入 → 请求打回桥）这一轮，
-//   消息里会同时出现两份积温材料：
+//   消息里会同时出现两份潮汐基频材料：
 //     ① Operit 投递的通知全文（场景标签 + 档位行 + proactive 正文 + 出口说明 + 尾句）
 //     ② 桥照常注入的此刻块（场景标签 + 档位行 + reactive 正文 + 尾句）
 //   只有把它们拼起来看，才能判断是"重复"还是"打架"。
@@ -41,7 +41,7 @@ function show(title, statePre) {
   console.log(title);
   console.log(`  tick 时刻 c=${statePre.connection.toFixed(2)} → 通知；投递后衰减 ${DECAY} → 请求时刻 c=${statePost.connection.toFixed(2)}`);
   console.log('='.repeat(72));
-  console.log('\n--- ① 桥注入的【积温·此刻】(reactive 语域) ---');
+  console.log('\n--- ① 桥注入的【潮汐基频·此刻】(reactive 语域) ---');
   console.log(block);
   console.log('\n--- ② Operit 投递的通知 (proactive 语域) ---');
   console.log(notice);
@@ -61,7 +61,7 @@ show('场景 2：刚过考虑线（c=0.38）', { connection: 0.38, poise: 0.15, 
   console.log('\n' + '='.repeat(72));
   console.log('场景 3：独处通知（low_valence），state 无衰减');
   console.log('='.repeat(72));
-  console.log('\n--- ① 桥注入的【积温·此刻】(reactive 语域) ---');
+  console.log('\n--- ① 桥注入的【潮汐基频·此刻】(reactive 语域) ---');
   console.log(block);
   console.log('\n--- ② Operit 投递的通知 (sceneOverride 语域) ---');
   console.log(notice);

@@ -2,12 +2,12 @@
 // ============================================================
 // 主动唤醒「时间间隔与频次」精确计算
 //
-// 用真实 vendor/jiwen.js 引擎跑，参数取线上 .env 实值。
+// 用真实 vendor/cadence.js 引擎跑，参数取线上 .env 实值。
 // 回答两个问题：
 //   Q1 她多久不说话，会触发第一次唤醒？（首动作时间）
 //   Q2 一天最多触发几次？间隔多少？（频次）
 //
-// 关键公式（vendor/jiwen.js:248-271）：
+// 关键公式（vendor/cadence.js:248-271）：
 //   accelFactor  = (1 + connection) ^ connectionAccel   （当 elapsed >= accelDelay）
 //   effectiveRate= CONNECTION_RATE × accelFactor × valenceMult × immersionFactor
 //   connection  += effectiveRate × mins     （每个 tick 累加）
@@ -17,8 +17,8 @@
 // 阈值：observation=0.20, considerContact=0.35, forceContact=0.50
 // ============================================================
 const path = require('path');
-const ROOT = '/root/jiwen-bridge';
-const { createJiwen } = require(path.join(ROOT, 'vendor/jiwen.js'));
+const ROOT = '/root/cadence-bridge';
+const { createCadence } = require(path.join(ROOT, 'vendor/cadence.js'));
 
 // ── 线上 .env 实值 ──
 const CFG = {
@@ -75,7 +75,7 @@ theoretical();
 // ── 引擎实跑：模拟"她整天不说话" ──
 async function engineRun() {
   console.log('=== 引擎实跑：她 24 小时完全沉默 ===');
-  const jiwen = createJiwen({
+  const cadence = createCadence({
     getLastMessage: () => null,
     connectionRateFn: () => CFG.connectionRate,
     onSave: async () => {},
@@ -91,7 +91,7 @@ async function engineRun() {
       accelDelay: CFG.accelDelay,
     },
   });
-  await jiwen.getState();
+  await cadence.getState();
 
   const TICK = CFG.tickMinutes;
   const TOTAL_MIN = 24 * 60;
@@ -100,8 +100,8 @@ async function engineRun() {
   let prevC = 0;
 
   for (let t = 0; t <= TOTAL_MIN; t += TICK) {
-    await jiwen.tick(TICK);
-    const s = await jiwen.getState();
+    await cadence.tick(TICK);
+    const s = await cadence.getState();
     const c = s.connection;
 
     // 判定动作（复刻 vendor 决策逻辑）

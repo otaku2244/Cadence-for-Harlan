@@ -1,30 +1,30 @@
 'use strict';
-// 积温块 × Serein 剥离器 —— 跨仓库契约测试
+// 潮汐基频块 × Lattice 剥离器 —— 跨仓库契约测试
 // 用法：node _test/contract_check.js
 //
 // ── 为什么单独一个文件 ──────────────────────────────
 //
-// 积温块与 Serein 之间是一个**隐式契约**，横跨两个仓库：
+// 潮汐基频块与 Lattice 之间是一个**隐式契约**，横跨两个仓库：
 //
-//   桥：拼一块  【积温·X】 …正文… 【尾标记】   → 发出去
-//   Serein：见到【积温·X】进跳过态，靠【尾标记】出来
+//   桥：拼一块  【潮汐基频·X】 …正文… 【尾标记】   → 发出去
+//   Lattice：见到【潮汐基频·X】进跳过态，靠【尾标记】出来
 //
-// 契约破裂的代价不对称 —— 大得多的一侧在 Serein：
+// 契约破裂的代价不对称 —— 大得多的一侧在 Lattice：
 //   末行不对 → 跳过态一直持续到消息结尾 → **她的原话被整段吞掉**。
-//   （Serein 侧用例 8 实测，chat_context.py Fork 提交 a5c1bdd）
+//   （Lattice 侧用例 8 实测，chat_context.py Fork 提交 a5c1bdd）
 //
-// 而两侧常量形状不同（桥发带【】的整行，Serein 存去【】的内文），最容易被改错。
+// 而两侧常量形状不同（桥发带【】的整行，Lattice 存去【】的内文），最容易被改错。
 // 所以这里做两件事：
 //   A. 穷举桥能产出的每一个块，断言形状合规；
-//   B. 直接读 Serein 源码，断言两侧常量逐字对得上 —— 这是唯一能自动发现
+//   B. 直接读 Lattice 源码，断言两侧常量逐字对得上 —— 这是唯一能自动发现
 //      "改了一侧忘了另一侧"的地方。
 
 const fs = require('fs');
 const path = require('path');
 
 const {
-  buildInjectionBlock, buildProactiveNotice, stripJiwenBlocks, assertBlockShape,
-  SCENE_TAG, BOUNDARY_LINE, BOUNDARY_INNER, BLOCK_TAILS,
+  buildInjectionBlock, buildProactiveNotice, stripCadenceBlocks, assertBlockShape,
+  SCENE_TAG, BLOCK_HEAD, BLOCK_TITLE, BOUNDARY_LINE, BOUNDARY_INNER, BLOCK_TAILS,
 } = require('../lib/inject-text.js');
 const { createToneGrid } = require('../vendor/tone-grid.js');
 
@@ -120,7 +120,7 @@ const allBlocks = [];
   const surfTail = surfBlocks.filter(([, b]) => b.split('\n').pop() !== BOUNDARY_LINE);
   check('产物/兜底块末行都是 BOUNDARY_LINE', surfTail.length === 0, surfTail.slice(0, 3).map((x) => x[0]));
 
-  // 内层不能有【】行 —— 带了会让 Serein 提前出块、产物整段泄漏
+  // 内层不能有【】行 —— 带了会让 Lattice 提前出块、产物整段泄漏
   const innerBracket = surfBlocks.filter(([, b]) =>
     b.split('\n').slice(1, -1).some((l) => /^\s*【[^】]*】/.test(l)));
   check('产物块内无多余【】行（内层标题必须裸行）',
@@ -136,16 +136,16 @@ const allBlocks = [];
     label.startsWith('失败兜底') && !b.includes('没翻出什么合适的'));
   check('失败兜底块带可读说明', emptyFail.length === 0, emptyFail.slice(0, 2).map((x) => x[0]));
 
-  const multiHead = allBlocks.filter(([, b]) => b.split('\n').filter((l) => /^【积温·/.test(l)).length !== 1);
+  const multiHead = allBlocks.filter(([, b]) => b.split('\n').filter((l) => l === BLOCK_HEAD).length !== 1);
   check('每块恰有一个块头', multiHead.length === 0, multiHead.slice(0, 3).map((x) => x[0]));
 
   const blank = allBlocks.filter(([, b]) => b.split('\n').some((l) => l.trim() === ''));
-  check('块内不含空行（Serein 不把空行当出块信号，含空行会留隐患）',
+  check('块内不含空行（Lattice 不把空行当出块信号，含空行会留隐患）',
     blank.length === 0, blank.slice(0, 3).map((x) => x[0]));
 
   const heads = new Set(allBlocks.map(([, b]) => b.split('\n')[0]));
-  check('块头统一为【积温·此刻】（2026-10-07 起不再按场景区分）',
-    [...heads].every((h) => /^【积温·此刻】$/.test(h)), [...heads]);
+  check('块头统一为【潮汐基频 · CADENCE】（2026-10-23 起不再带场景位）',
+    [...heads].every((h) => h === BLOCK_HEAD), [...heads]);
 
   // ── 块内不再有档位行（2026-10-08 起整条删除）──
   //    `心情：X。姿态：X。心跳：X。想念：X。` 与紧随其后的 45 格正文同义重复：
@@ -167,17 +167,17 @@ console.log('\n[3] 负向用例 —— 断言必须抓得住破裂');
   check('末行缺失 → 判为不合规', assertBlockShape(dropTail).length > 0);
 
   const bareTail = good.split('\n').slice(0, -1).concat(BOUNDARY_INNER).join('\n');
-  check('末行丢了【】→ 判为不合规（Serein 的 marker 去括号后仍相同，但形状说明已写错）',
+  check('末行丢了【】→ 判为不合规（Lattice 的 marker 去括号后仍相同，但形状说明已写错）',
     assertBlockShape(bareTail).length > 0);
 
   const twoHeads = good.split('\n');
-  twoHeads.splice(1, 0, '【积温·此刻】');
+  twoHeads.splice(1, 0, '【潮汐基频·此刻】');
   check('块头出现两次 → 判为不合规', assertBlockShape(twoHeads.join('\n')).length > 0);
 
   check('空串 → 判为不合规', assertBlockShape('').length > 0);
   check('单行 → 判为不合规', assertBlockShape(BOUNDARY_LINE).length > 0);
 
-  // ── 产物块专属负向：内层【】必须被抓，否则 Serein 提前出块、产物泄漏 ──
+  // ── 产物块专属负向：内层【】必须被抓，否则 Lattice 提前出块、产物泄漏 ──
   const surfGood = buildProactiveNotice(STATES[0], tg, {
     scene: 'find_activity', reason: 'surf',
     finding: { title: '《标题》', url: 'https://example.com/a', image: '', note: '摘要。' },
@@ -197,24 +197,24 @@ console.log('\n[3] 负向用例 —— 断言必须抓得住破裂');
 }
 
 // ════════════════════════════════════════════════════
-console.log('\n[4] 剥离语义 —— 与 Serein 行为对齐');
+console.log('\n[4] 剥离语义 —— 与 Lattice 行为对齐');
 // ════════════════════════════════════════════════════
 {
-  // Serein 的规则本地镜像：块进跳过态 → 尾标记出块 → 她的话保留。
+  // Lattice 的规则本地镜像：块进跳过态 → 尾标记出块 → 她的话保留。
   for (const [label, blk] of allBlocks.slice(0, 40)) {
-    const ok = stripJiwenBlocks(blk + '\n\n' + HER_WORDS) === HER_WORDS;
-    if (!ok) { check('剥离 ' + label, false, stripJiwenBlocks(blk + '\n\n' + HER_WORDS)); break; }
+    const ok = stripCadenceBlocks(blk + '\n\n' + HER_WORDS) === HER_WORDS;
+    if (!ok) { check('剥离 ' + label, false, stripCadenceBlocks(blk + '\n\n' + HER_WORDS)); break; }
   }
   check('抽 40 个块，剥离后只剩她的话', true);
 
-  // 尾标记后的空行 + 她的话必须都保留（Serein 侧用例 4 的同型）
+  // 尾标记后的空行 + 她的话必须都保留（Lattice 侧用例 4 的同型）
   const blk = allBlocks[0][1];
   check('尾标记 → 空行 → 她的话：全保留',
-    stripJiwenBlocks(blk + '\n\n' + HER_WORDS) === HER_WORDS);
+    stripCadenceBlocks(blk + '\n\n' + HER_WORDS) === HER_WORDS);
   check('尾标记后紧接她的话（无空行）',
-    stripJiwenBlocks(blk + '\n' + HER_WORDS) === HER_WORDS);
+    stripCadenceBlocks(blk + '\n' + HER_WORDS) === HER_WORDS);
 
-  // ── 产物块 / 失败兜底块的剥离（走 Serein 同型逻辑）──
+  // ── 产物块 / 失败兜底块的剥离（走 Lattice 同型逻辑）──
   const surfSample = [
     buildProactiveNotice(STATES[0], tg, {
       scene: 'find_activity', reason: 'surf',
@@ -226,9 +226,9 @@ console.log('\n[4] 剥离语义 —— 与 Serein 行为对齐');
   ];
   let surfStripOk = true;
   for (const b of surfSample) {
-    if (stripJiwenBlocks(b + '\n\n' + HER_WORDS) !== HER_WORDS) {
+    if (stripCadenceBlocks(b + '\n\n' + HER_WORDS) !== HER_WORDS) {
       surfStripOk = false;
-      check('剥离产物块', false, stripJiwenBlocks(b + '\n\n' + HER_WORDS));
+      check('剥离产物块', false, stripCadenceBlocks(b + '\n\n' + HER_WORDS));
       break;
     }
   }
@@ -239,28 +239,28 @@ console.log('\n[4] 剥离语义 —— 与 Serein 行为对齐');
   const surfBlk = surfSample[0];
   const innerBody = surfBlk.split('\n').slice(1, -1).join('\n');
   check('产物块的内层正文会被剥离（尾句已进 BLOCK_TAIL_RE）',
-    !stripJiwenBlocks(surfBlk + '\n' + HER_WORDS).includes('搜到了一条有意思的内容'),
-    stripJiwenBlocks(surfBlk + '\n' + HER_WORDS));
+    !stripCadenceBlocks(surfBlk + '\n' + HER_WORDS).includes('搜到了一条有意思的内容'),
+    stripCadenceBlocks(surfBlk + '\n' + HER_WORDS));
 }
 
 // ════════════════════════════════════════════════════
-console.log('\n[5] 跨仓库常量一致性（读 Serein 源码）');
+console.log('\n[5] 跨仓库常量一致性（读 Lattice 源码）');
 // ════════════════════════════════════════════════════
 {
   const CANDIDATES = [
-    process.env.SEREIN_SRC,
-    path.join(__dirname, '..', '..', 'Serein-fork', 'src', 'serein', 'chat_context.py'),
-    path.join(__dirname, '..', '..', 'Serein', 'src', 'serein', 'chat_context.py'),
-    '/root/Serein/src/serein/chat_context.py',
+    process.env.LATTICE_SRC,
+    path.join(__dirname, '..', '..', 'lattice', 'src', 'lattice', 'chat_context.py'),
+    path.join(__dirname, '..', '..', 'Lattice', 'src', 'lattice', 'chat_context.py'),
+    '/root/lattice/src/lattice/chat_context.py',
   ].filter(Boolean);
 
   const found = CANDIDATES.find((p) => { try { return fs.statSync(p).isFile(); } catch (_) { return false; } });
 
   if (!found) {
     skipped++;
-    console.log('  SKIP  （找不到 Serein 源码，跳过跨仓库校验）');
+    console.log('  SKIP  （找不到 Lattice 源码，跳过跨仓库校验）');
     console.log('        试过：' + CANDIDATES.join('  |  '));
-    console.log('        可设环境变量 SEREIN_SRC 指向 src/serein/chat_context.py');
+    console.log('        可设环境变量 LATTICE_SRC 指向 src/lattice/chat_context.py');
   } else {
     console.log('  源：' + found);
     const src = fs.readFileSync(found, 'utf8');
@@ -278,44 +278,44 @@ console.log('\n[5] 跨仓库常量一致性（读 Serein 源码）');
     check('解析出 EXTERNAL_CONTEXT_BLOCK_END_MARKERS', !!markers, found);
 
     if (titles && markers) {
-      // ① 尾标记：Serein 存的是去【】的内文
-      check('Serein 的 END_MARKERS 含尾标记内文（逐字一致）',
+      // ① 尾标记：Lattice 存的是去【】的内文
+      check('Lattice 的 END_MARKERS 含尾标记内文（逐字一致）',
         markers.has(BOUNDARY_INNER),
-        { 桥侧内文: BOUNDARY_INNER, Serein侧: [...markers] });
+        { 桥侧内文: BOUNDARY_INNER, Lattice侧: [...markers] });
 
-      // ①b 反向（已并入下方 ①c）：桥侧只声明一条尾句，Serein 集合里也必须只有那一条
-      check('Serein 的 END_MARKERS 不含已删除的冲浪尾句',
+      // ①b 反向（已并入下方 ①c）：桥侧只声明一条尾句，Lattice 集合里也必须只有那一条
+      check('Lattice 的 END_MARKERS 不含已删除的冲浪尾句',
         ![...markers].some((m) => m.includes('真实切片')),
-        { Serein侧: [...markers] });
+        { Lattice侧: [...markers] });
 
-      // ①c 反向：桥侧声明的每条尾句，Serein 都必须认得（漏一条 = 那种块整段泄漏）
+      // ①c 反向：桥侧声明的每条尾句，Lattice 都必须认得（漏一条 = 那种块整段泄漏）
       const tailInners = [...BLOCK_TAILS].map((l) => l.replace(/^【|】$/g, ''));
       const missingTails = tailInners.filter((t) => !markers.has(t));
-      check('桥侧所有尾标记都在 Serein 的 END_MARKERS 里', missingTails.length === 0,
+      check('桥侧所有尾标记都在 Lattice 的 END_MARKERS 里', missingTails.length === 0,
         { 缺失: missingTails });
 
-      // ② 桥能产出的每个块头，都必须在 Serein 的白名单里
-      const needTitles = Object.values(SCENE_TAG).map((t) => '积温·' + t);
+      // ② 桥能产出的每个块头，都必须在 Lattice 的白名单里
+      const needTitles = [...new Set(Object.values(SCENE_TAG))];  // 2026-10-23 起 SCENE_TAG 的值就是完整块头
       const missing = needTitles.filter((t) => !titles.has(t));
-      check('桥的所有场景块头都在 Serein 白名单内（' + needTitles.join(' / ') + '）',
+      check('桥的所有场景块头都在 Lattice 白名单内（' + needTitles.join(' / ') + '）',
         missing.length === 0, missing);
 
-      // ③ 反向：白名单里的积温标题必须**恰好等于**桥的产出集合（不多不少）。
-      //    ⚠️ 2026-10-07 起桥只产 `积温·此刻`，白名单也只留它一条。
-      //       历史块头 `积温·找她` / `积温·独处` **已删且不得补回**：
+      // ③ 反向：白名单里的潮汐基频标题必须**恰好等于**桥的产出集合（不多不少）。
+      //    ⚠️ 2026-10-23 起桥只产 `潮汐基频 · CADENCE`，白名单也只留它一条。
+      //       历史块头「积温·找她」/「积温·独处」**已删且不得补回**：
       //       旧块的尾句是无【】的裸行，进跳过态后永远出不来 →
       //       补进白名单会让跳过态吃到结尾，把**她紧随的原话整段吞掉**（归档成 ''）。
       //       不进白名单只是不剥离（旧块留在归档里），不毁正文。两害相权取其轻。
-      const extra = [...titles].filter((t) => t.startsWith('积温·') && !needTitles.includes(t));
-      check('Serein 白名单里的积温标题恰好等于桥的产出集合（多一条就得评估是否吞正文）',
+      const extra = [...titles].filter((t) => t.startsWith('潮汐基频') && !needTitles.includes(t));
+      check('Lattice 白名单里的潮汐基频标题恰好等于桥的产出集合（多一条就得评估是否吞正文）',
         extra.length === 0, { 白名单多出: extra, 桥产出: needTitles });
     }
 
-    // ④ Serein 的实现细节仍在：END_MARKERS 分支必须在 `if title:` 之后、进跳过态之前
+    // ④ Lattice 的实现细节仍在：END_MARKERS 分支必须在 `if title:` 之后、进跳过态之前
     const body = src.slice(src.indexOf('def _strip_external_context_blocks'));
     const iMarker = body.indexOf('title in EXTERNAL_CONTEXT_BLOCK_END_MARKERS');
     const iEnter = body.indexOf('skipping = title in EXTERNAL_CONTEXT_BLOCK_TITLES');
-    check('Serein 的 END_MARKERS 分支仍在进跳过态之前', iMarker > -1 && iEnter > -1 && iMarker < iEnter,
+    check('Lattice 的 END_MARKERS 分支仍在进跳过态之前', iMarker > -1 && iEnter > -1 && iMarker < iEnter,
       { iMarker, iEnter });
   }
 }

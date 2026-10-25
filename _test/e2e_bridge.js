@@ -1,9 +1,9 @@
 'use strict';
 // ════════════════════════════════════════════════════
-// 本机端到端测试（不依赖真实 Serein / 不依赖真实 LLM）
+// 本机端到端测试（不依赖真实 Lattice / 不依赖真实 LLM）
 //
 // 做法：
-//   · 起一个假的 Serein 上游（记录收到的 body）
+//   · 起一个假的 Lattice 上游（记录收到的 body）
 //   · 起一个假的 LLM 端点（返回固定 delta）
 //   · 起桥本体，指向上面两个假端点
 //   · 发一条带 messages 的 chat/completions 请求
@@ -146,7 +146,7 @@ function check(name, cond, detail) {
   };
   const r3 = await req(BRIDGE_PORT, '/v1/chat/completions', payload, {
     authorization: 'Bearer test-token-at-least-24-chars-abcdef',
-    'x-serein-window-id': 'operit',
+    'x-lattice-window-id': 'operit',
   });
   check('转发成功（200）', r3.status === 200, 'status=' + r3.status);
 
@@ -157,10 +157,10 @@ function check(name, cond, detail) {
     upstreamReceived && upstreamReceived.headers.authorization === 'Bearer upstream-key-xyz',
     upstreamReceived && upstreamReceived.headers.authorization);
   check('窗口头原样透传',
-    upstreamReceived && upstreamReceived.headers['x-serein-window-id'] === 'operit',
-    upstreamReceived && upstreamReceived.headers['x-serein-window-id']);
-  check('最后一条 user 消息被注入积温块',
-    lastMsg && lastMsg.content.includes('【积温·此刻'),
+    upstreamReceived && upstreamReceived.headers['x-lattice-window-id'] === 'operit',
+    upstreamReceived && upstreamReceived.headers['x-lattice-window-id']);
+  check('最后一条 user 消息被注入潮汐基频块',
+    lastMsg && lastMsg.content.includes('【潮汐基频·此刻'),
     lastMsg ? lastMsg.content.slice(0, 50) : 'null');
   check('注入块保留原消息内容',
     lastMsg && lastMsg.content.includes('我有点累了'));
@@ -182,7 +182,7 @@ function check(name, cond, detail) {
 
   await req(BRIDGE_PORT, '/v1/chat/completions', payload, {
     authorization: 'Bearer test-token-at-least-24-chars-abcdef',
-    'x-serein-window-id': 'operit',
+    'x-lattice-window-id': 'operit',
   });
   await wait(900);
   check('同一份 messages 重发 → 判定器不再被喂（工具轮去重）',
@@ -193,7 +193,7 @@ function check(name, cond, detail) {
   payload2.messages[3] = { role: 'user', content: '算了 你先忙' };
   await req(BRIDGE_PORT, '/v1/chat/completions', payload2, {
     authorization: 'Bearer test-token-at-least-24-chars-abcdef',
-    'x-serein-window-id': 'operit',
+    'x-lattice-window-id': 'operit',
   });
   await wait(900);
   check('她说了新话 → 判定器被喂（去重不误杀新一轮）',
@@ -218,7 +218,7 @@ function check(name, cond, detail) {
   payload4b.messages[3] = { role: 'user', content: '嗯' };
   await req(BRIDGE_PORT, '/v1/chat/completions', payload4b, {
     authorization: 'Bearer test-token-at-least-24-chars-abcdef',
-    'x-serein-window-id': 'operit',
+    'x-lattice-window-id': 'operit',
   });
   await wait(1600);
   const after4b = JSON.parse(fs.readFileSync(STATE, 'utf8')).connection;
@@ -254,7 +254,7 @@ function check(name, cond, detail) {
   payload3.messages[3] = { role: 'user', content: '刚忙完？' };
   await req(BRIDGE_PORT, '/v1/chat/completions', payload3, {
     authorization: 'Bearer test-token-at-least-24-chars-abcdef',
-    'x-serein-window-id': 'operit',
+    'x-lattice-window-id': 'operit',
   });
   await wait(300);
   const lastMsg3 = upstreamReceived && upstreamReceived.body.messages[3];

@@ -8,7 +8,7 @@
 """
 import io, sys
 
-P = "/root/jiwen-bridge/bridge.js"
+P = "/root/cadence-bridge/bridge.js"
 
 # ── 改动 1：NEUTRAL_SEED 加 cooldown ──────────────────
 A1 = """  lastBotMessageId: null,
@@ -55,8 +55,8 @@ B3 = """const actionCooldown = createSceneCooldown({
 // 暴露给 saveState：始终取冷却模块的最新快照。
 _cooldownSnapshot = () => actionCooldown.snapshot();"""
 
-# ── 改动 4：启动时 restore（放在 jiwen 实例创建之后）──
-A4 = """// ── 积温实例（全局唯一）──────────────────────────"""
+# ── 改动 4：启动时 restore（放在 cadence 实例创建之后）──
+A4 = """// ── 潮汐基频实例（全局唯一）──────────────────────────"""
 B4 = """// ── 冷却表恢复（2026-10-10）──────────────────────
 // 必须在首次 tick / 首次主动唤醒判断之前执行，否则重启后的第一轮
 // 会当成"从未触发过"直接放行。loadState() 读的就是 state.json。
@@ -76,7 +76,7 @@ try {
   log('WARN', 'cooldown restore failed: ' + e.message);
 }
 
-// ── 积温实例（全局唯一）──────────────────────────"""
+// ── 潮汐基频实例（全局唯一）──────────────────────────"""
 
 
 def patch(text, anchor, block, tag):

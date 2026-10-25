@@ -1,10 +1,10 @@
 'use strict';
-// 跨语言一致性 —— 桥产出的积温块 × Serein 的**真实**剥离函数
+// 跨语言一致性 —— 桥产出的潮汐基频块 × Lattice 的**真实**剥离函数
 // 用法：node _test/conformance_check.js
 //
 // ── 与 contract_check.js 的分工 ─────────────────────
 // contract_check 读源码文本、比对常量字面量（静态契约）。
-// 本文件把桥真正生成的块喂给 Serein 的 `_strip_external_context_from_user_text`，
+// 本文件把桥真正生成的块喂给 Lattice 的 `_strip_external_context_from_user_text`，
 // 比对输出（动态契约）—— 覆盖面是"实现细节"而非"常量文本"。
 //
 // 为什么要真跑 python：破裂形态完全取决于实现细节（跳过态怎么进、谁能让它出来、
@@ -18,7 +18,7 @@ const os = require('os');
 const { spawn } = require('child_process');
 
 const {
-  buildInjectionBlock, buildProactiveNotice, stripJiwenBlocks,
+  buildInjectionBlock, buildProactiveNotice, stripCadenceBlocks,
   SCENE_TAG, BOUNDARY_LINE, BOUNDARY_INNER,
 } = require('../lib/inject-text.js');
 const { createToneGrid } = require('../vendor/tone-grid.js');
@@ -56,15 +56,15 @@ async function pickPython() {
   return null;
 }
 
-function pickSereinSrc() {
+function pickLatticeSrc() {
   const cands = [
     process.env.SEREIN_SRC,
-    path.join(__dirname, '..', '..', 'Serein-fork', 'src'),
-    path.join(__dirname, '..', '..', 'Serein', 'src'),
-    '/root/Serein/src',
+    path.join(__dirname, '..', '..', 'Lattice-fork', 'src'),
+    path.join(__dirname, '..', '..', 'Lattice', 'src'),
+    '/root/lattice/src',
   ].filter(Boolean);
   for (const p of cands) {
-    try { if (fs.statSync(path.join(p, 'serein', 'chat_context.py')).isFile()) return p; } catch (_) { /* next */ }
+    try { if (fs.statSync(path.join(p, 'lattice', 'chat_context.py')).isFile()) return p; } catch (_) { /* next */ }
   }
   return null;
 }
@@ -122,19 +122,19 @@ add('空串', '', '');
 // ⑤ 特征化断言（记录既有行为，变化时会报警）
 {
   const blk = blocks[0][1];
-  // Serein 名单块一旦开启，空行关不掉；末行不对 → 后面全吞。
+  // Lattice 名单块一旦开启，空行关不掉；末行不对 → 后面全吞。
   add('特征化：块缺尾标记 → 她的话被吞', blk.split('\n').slice(0, -1).join('\n') + '\n\n' + HER_WORDS, '');
   // 一版/二版尾句不在 END_MARKERS 里 → 同样吞
-  const v1 = ['【积温·此刻】', '心情：中性。', '正文。', V1_TAIL].join('\n');
+  const v1 = ['【潮汐基频·此刻】', '心情：中性。', '正文。', V1_TAIL].join('\n');
   add('特征化：一版尾句块 → 她的话被吞', v1 + '\n\n' + HER_WORDS, '');
-  const v2 = ['【积温·此刻】', '心情：中性。', '正文。', V2_TAIL].join('\n');
+  const v2 = ['【潮汐基频·此刻】', '心情：中性。', '正文。', V2_TAIL].join('\n');
   add('特征化：二版尾句块 → 她的话被吞', v2 + '\n\n' + HER_WORDS, '');
-  // 三/四版的内文相同（只差括号）。Serein 取标题要求行首是【，所以**裸内文尾行
+  // 三/四版的内文相同（只差括号）。Lattice 取标题要求行首是【，所以**裸内文尾行
   // 不算标题**（title=""），跳过态关不掉 → 她的话照样被吞。
-  // 这一条是本文件唯一"两侧行为有意分歧"的用例：Serein 吞、本地 stripJiwenBlocks 不吞
+  // 这一条是本文件唯一"两侧行为有意分歧"的用例：Lattice 吞、本地 stripCadenceBlocks 不吞
   // （本地是给判定器洗输入用的，宁可多留也不能丢她的话）。
-  const v3 = ['【积温·此刻】', '心情：中性。', '正文。', BOUNDARY_INNER].join('\n');
-  add('特征化：裸内文尾行（三版形态）→ Serein 吞掉她的话', v3 + '\n\n' + HER_WORDS, '');
+  const v3 = ['【潮汐基频·此刻】', '心情：中性。', '正文。', BOUNDARY_INNER].join('\n');
+  add('特征化：裸内文尾行（三版形态）→ Lattice 吞掉她的话', v3 + '\n\n' + HER_WORDS, '');
 }
 
 (async () => {
@@ -148,18 +148,18 @@ add('空串', '', '');
 
   console.log('\n[1] 环境');
   const py = await pickPython();
-  const src = pickSereinSrc();
+  const src = pickLatticeSrc();
   check('找到 python 解释器', !!py, py);
-  check('找到 Serein 源码目录', !!src, src);
+  check('找到 Lattice 源码目录', !!src, src);
   if (!py || !src) {
     console.log('\nSKIP：环境不全，无法跑跨语言一致性。');
     process.exit(0);
   }
   console.log('  python: ' + py);
-  console.log('  serein: ' + src);
+  console.log('  lattice: ' + src);
 
-  console.log('\n[2] 用 Serein 真实函数处理 ' + cases.length + ' 条语料');
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'jiwen-conf-'));
+  console.log('\n[2] 用 Lattice 真实函数处理 ' + cases.length + ' 条语料');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cadence-conf-'));
   const corpusPath = path.join(tmp, 'corpus.json');
   const outPath = path.join(tmp, 'out.json');
   fs.writeFileSync(corpusPath, JSON.stringify(cases), 'utf8');
@@ -172,7 +172,7 @@ add('空串', '', '');
 
   const raw = JSON.parse(fs.readFileSync(outPath, 'utf8'));
   if (raw && raw.error) {
-    check('导入 serein.chat_context 成功', false, raw.error);
+    check('导入 lattice.chat_context 成功', false, raw.error);
     process.exit(1);
   }
   check('python 侧执行成功', true);
@@ -196,16 +196,16 @@ add('空串', '', '');
   const loop = mismatches.filter((m) => m.label.startsWith('仅块'));
   check('回环轮（仅块）全部被清成空', loop.length === 0, loop.slice(0, 4));
 
-  // 本地剥离器与 Serein 一致性（同语料同期望）
-  console.log('\n[4] 本地 stripJiwenBlocks 与 Serein 结果对齐');
+  // 本地剥离器与 Lattice 一致性（同语料同期望）
+  console.log('\n[4] 本地 stripCadenceBlocks 与 Lattice 结果对齐');
   const localDiff = [];
   for (const e of expect) {
     if (e.label.startsWith('特征化') || e.label === '空串') continue;
-    const mine = stripJiwenBlocks(e.label.startsWith('仅块') ? cases.find((c) => c.label === e.label).text
+    const mine = stripCadenceBlocks(e.label.startsWith('仅块') ? cases.find((c) => c.label === e.label).text
       : cases.find((c) => c.label === e.label).text).trim();
     if (mine !== e.wanted) localDiff.push({ label: e.label, wanted: e.wanted, mine: mine.slice(0, 80) });
   }
-  check('本地剥离与 Serein 期望一致', localDiff.length === 0, localDiff.slice(0, 4));
+  check('本地剥离与 Lattice 期望一致', localDiff.length === 0, localDiff.slice(0, 4));
 
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (_) { /* 忽略 */ }
 

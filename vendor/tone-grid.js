@@ -1,19 +1,19 @@
-// jiwen/tone-grid.js
+// cadence/tone-grid.js
 // 语调网格模块 — 将 V×A×poise 五轴数值翻译成 LLM 说话指令
 //
-// 这是 jiwen 引擎的「人格皮肤层」。数学引擎算出状态数值，
+// 这是 cadence 引擎的「人格皮肤层」。数学引擎算出状态数值，
 // 语调网格把数值变成具体的行为指令注入 LLM prompt。
 //
 // 用法:
-//   const { createToneGrid } = require('jiwen/tone-grid');
+//   const { createToneGrid } = require('cadence/tone-grid');
 //   const grid = createToneGrid(); // 用默认通用文案
 //
 //   // 或者从 JSON 配置文件加载自定义文案:
 //   const config = require('./my-character-tone.json');
 //   const grid = createToneGrid(config);
 //
-//   然后注入 jiwen:
-//   const jiwen = createJiwen({
+//   然后注入 cadence:
+//   const cadence = createCadence({
 //     ...其他配置,
 //     getStyleGuidance: (state) => grid.getStyleGuidance(state),
 //     getPromptContext:  (state) => grid.getPromptContext(state),
@@ -29,7 +29,7 @@
 
 // ── 默认语调网格（通用版）──────────────────────
 // 每格是 LLM 行为指令。用「对方」指代聊天对象，
-// jiwen 的 persona 配置会自动替换人称。
+// cadence 的 persona 配置会自动替换人称。
 //
 // 这些默认文案是功能性的——它们能让 LLM 产生可观察的
 // 语气变化，但没有任何角色的独特气质。替换成你自己
@@ -172,11 +172,17 @@ function classifyCluster(v, a) {
 }
 
 // ── poise → 档位 ──
+// [本地改动 2026-10-23 · 用户裁定] 0 点归位。
+// 旧阈值 (0.1/0.3/0.5/0.8) 与「poise=0 是平常，端着但不费力」的定义不符：
+// 它把整段负值塞进档1（最松卸），日常闲聊与极度放软同格；
+// 而规则 2/3 的 poise 上限 +0.30 又刚好卡在 `>0.3` 之下，到不了档3。
+// 现按语义重切三档：
+//   档1 p < -0.10   卸下端持（示弱/撒娇/纵容）
+//   档2 -0.10~0.15  常态从容
+//   档3 p > 0.15    收拢自持（交锋/生气/久未联系）
 function classifyPoise(p) {
-  if (p > 0.8) return 5;
-  if (p > 0.5) return 4;
-  if (p > 0.3) return 3;
-  if (p > 0.1) return 2;
+  if (p > 0.15) return 3;
+  if (p >= -0.1) return 2;
   return 1;
 }
 
