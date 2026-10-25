@@ -96,6 +96,15 @@ const CFG = {
   // vendor 默认 0.003 在 c∈[0.35,0.50) 的窗口里涨不到 0.5（实测差 0.05），
   // 必须 ≥0.004 才能在窗口关闭（c 越过强制线）之前把 poise 顶上去。见 _test/scan_activity.js。
   poiseDefendRate: parseFloat(process.env.POISE_DEFEND_RATE || '0.004'),
+  // 防御漂移的**上限**。vendor 默认 0.5 有两个问题：
+  //   ① 旧 5 档阈值是 0.1/0.3/0.5/0.8，档4 要 p>0.5，而漂移用 Math.min 卡死在 0.5
+  //      → 目标值等于阈值，严格大于永远差一个 epsilon，档4/档5 从写下起就是死代码。
+  //   ② 即便按现三档（p>0.15 入档3），0.5 也远高于阈值：她只要 2.9 小时不出现，
+  //      poise 必然越过 0.15 并锁死在 0.5，档3 从「交锋/生气」变成「默认态」。
+  // 取 0.12 = 落在档2（-0.10~0.15）以内，防御上限不再自动触发档3；
+  // 档3 交给判定器 delta 推过 0.15 才出现，语义回到「被激到」而非「她不在」。
+  // 回滚：POISE_DEFEND_TARGET=0.5。
+  poiseDefendTarget: parseFloat(process.env.POISE_DEFEND_TARGET || '0.12'),
 
   // ── 唤醒度上升通道：想念久了心头起波（2026-10-23 打开）─────────────
   // vendor 默认 threshold=1.0（「永不」哨兵），于是 arousal 只能靠判定器 delta，
@@ -386,6 +395,7 @@ const cadence = createCadence({
     // （否则 poise 升不到 poiseBlock → find_activity 永不触发）。
     poiseDefendThreshold: CFG.poiseDefendThreshold,
     poiseDefendRate: CFG.poiseDefendRate,
+    poiseDefendTarget: CFG.poiseDefendTarget,
     // 唤醒度上升：c 过线后 a 才可能往上走（vendor 原生，默认阈值 1.0 = 永不）
     arousalConnectionRiseThreshold: CFG.arousalConnectionRiseThreshold,
     arousalConnectionRiseRate: CFG.arousalConnectionRiseRate,
@@ -1010,7 +1020,8 @@ const mcp = CFG.mcpEnabled ? createMcpHandler({
       `(tz+${CFG.tzOffsetHours}) cooldown=${CFG.actionCooldownMinutes}min` +
       ` analyzerDedup=${CFG.analyzeDedupSeconds}s`);
     log('INFO', `poiseDefend: threshold=${CFG.poiseDefendThreshold} rate=${CFG.poiseDefendRate}` +
-      ` (vendor 默认 1.0/0.003 = 永不触发；本部署用于驱动 27 格档位，poise 上限 0.5 = 档3)`);
+      ` target=${CFG.poiseDefendTarget}` +
+      ` (vendor 默认 1.0/0.003/0.5；target 0.12 落在档2 内，档3 只由判定器 delta 触发)`);
     log('INFO', `arousalRise: threshold=${CFG.arousalConnectionRiseThreshold}` +
       ` rate=${CFG.arousalConnectionRiseRate}` +
       (CFG.arousalConnectionRiseThreshold >= 1
