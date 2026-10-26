@@ -5,7 +5,7 @@
 // 此刻块 = buildInjectionBlock(state, toneGrid, desc)
 //   走 toneGrid.getStyleGuidance（proactive 侧的对应方法是 getPromptContext）
 //   描述层由 desc 提供，拼在 45 格之前
-//   bridge.js 里的非回环轮：connection 由判定器 delta 驱动（2026-10-08 前是 resetConnection 归零）
+//   engine.js 里的非回环轮：connection 由判定器 delta 驱动（2026-10-08 前是 resetConnection 归零）
 //   → 描述层仍不出第 1 段（段1 是时间维度的话，此刻块用不上；与 connection 取值无关）
 //   → urgencyBoost 四档已全 null → 正文没有 urgency 尾注 → 45 格恒等于 profiles[簇][poise档]
 

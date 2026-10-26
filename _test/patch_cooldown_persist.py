@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""bridge.js 冷却持久化补丁（幂等，纯追加/替换既有行）。
+"""engine.js 冷却持久化补丁（幂等，纯追加/替换既有行）。
 
 三处改动：
   1. NEUTRAL_SEED 加 cooldown: {}          —— 首次启动有字段
@@ -8,7 +8,7 @@
 """
 import io, sys
 
-P = "/root/cadence-bridge/bridge.js"
+P = "/root/cadence/engine.js"
 
 # ── 改动 1：NEUTRAL_SEED 加 cooldown ──────────────────
 A1 = """  lastBotMessageId: null,

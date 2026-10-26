@@ -1,9 +1,9 @@
 'use strict';
 // 打印「模型实际看到的注入块」——按给定状态渲染。
-// 用法（在 cadence-bridge 目录下）: node _test/show_inject.js
+// 用法（在 cadence 目录下）: node _test/show_inject.js
 //
 // 目的：验证簇名（pleased / content / …）到底有没有进入模型可见文本。
-// 构造与 bridge.js 完全一致：createToneGrid({profiles, urgencyBoost})
+// 构造与 engine.js 完全一致：createToneGrid({profiles, urgencyBoost})
 // ⚠️ 参数名是 urgencyBoost（不是 urgency）—— vendor createToneGrid 只认 opts.urgencyBoost，
 //    写成 urgency 会静默回落成 DEFAULT_URGENCY，注入块里就会出现 vendor 的模板文案。
 

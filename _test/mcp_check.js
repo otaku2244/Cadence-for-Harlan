@@ -69,7 +69,7 @@ async function call(payload, opts) {
     const { json } = await call({ jsonrpc: '2.0', id: 1, method: 'initialize',
       params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'operit', version: '1' } } });
     check('① initialize 返回 serverInfo', json && json.result && json.result.serverInfo &&
-      json.result.serverInfo.name === 'cadence-bridge', json);
+      json.result.serverInfo.name === 'cadence', json);
     check('① initialize 声明 tools 能力', json && json.result && json.result.capabilities &&
       json.result.capabilities.tools, json && json.result);
     check('① initialize 回显 protocolVersion', json && json.result &&
@@ -274,7 +274,7 @@ async function call(payload, opts) {
     check('⑱ 禁用缓冲（x-accel-buffering）',
       !!(res.headers && res.headers['x-accel-buffering'] === 'no'), res.headers);
     check('⑱ 未立刻结束（保持长连接）', res.ended === false, res.ended);
-    check('⑱ 建流即写入 SSE 注释帧', res.stream().includes(': cadence-bridge MCP stream open'),
+    check('⑱ 建流即写入 SSE 注释帧', res.stream().includes(': cadence MCP stream open'),
       res.stream().slice(0, 60));
     check('⑱ 活跃流计数为 1', mcp.activeStreams() === 1, mcp.activeStreams());
 

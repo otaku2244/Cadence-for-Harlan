@@ -11,7 +11,7 @@ const { buildInjectionBlock } = require('../lib/inject-text.js');
 const cfgPath = path.join(__dirname, '..', 'config', 'tone-harlan.json');
 const tone = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
 
-// 与 bridge.js 一致的归一化（缺省档补齐）
+// 与 engine.js 一致的归一化（缺省档补齐）
 function normalizeTiers(profiles) {
   const out = {};
   for (const cluster of Object.keys(profiles || {})) {

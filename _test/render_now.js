@@ -10,7 +10,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = '/root/cadence-bridge';
+const ROOT = '/root/cadence';
 const statePath = path.join(ROOT, 'data/state.json');
 const tonePath = path.join(ROOT, 'config/tone-harlan.json');
 

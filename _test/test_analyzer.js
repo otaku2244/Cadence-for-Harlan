@@ -9,7 +9,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = '/root/cadence-bridge';
+const ROOT = '/root/cadence';
 const envTxt = fs.readFileSync(path.join(ROOT, '.env'), 'utf8');
 const get = (k, d) => {
   const m = envTxt.match(new RegExp('^' + k + '=(.*)$', 'm'));

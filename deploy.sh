@@ -7,7 +7,7 @@
 #
 #  作用：
 #    1. 检查 Node 版本（需要 >= 20）
-#    2. 安装到 /root/cadence-bridge
+#    2. 安装到 /root/cadence
 #    3. 生成 systemd unit 并启用
 #    4. 启动并做健康检查
 # ════════════════════════════════════════════════════
@@ -15,8 +15,8 @@
 set -e
 
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
-DEST="/root/cadence-bridge"
-SERVICE="cadence-bridge"
+DEST="/root/cadence"
+SERVICE="cadence"
 
 echo "═══ 潮汐基频桥部署 ═══"
 
@@ -36,7 +36,7 @@ echo "✓ Node $(node -v)"
 # ── 2. 复制文件 ──
 echo "→ 安装到 $DEST"
 mkdir -p "$DEST"
-cp -r "$SRC_DIR/bridge.js" "$SRC_DIR/lib" "$SRC_DIR/config" "$SRC_DIR/vendor" "$DEST/"
+cp -r "$SRC_DIR/engine.js" "$SRC_DIR/lib" "$SRC_DIR/config" "$SRC_DIR/vendor" "$DEST/"
 mkdir -p "$DEST/data"
 
 # ── 3. .env ──
@@ -59,7 +59,7 @@ After=network.target docker.service
 [Service]
 Type=simple
 WorkingDirectory=${DEST}
-ExecStart=$(command -v node) ${DEST}/bridge.js
+ExecStart=$(command -v node) ${DEST}/engine.js
 Restart=always
 RestartSec=5
 Environment=NODE_ENV=production
@@ -78,7 +78,7 @@ if [ "$NEED_EDIT" = "1" ]; then
   echo "⚠️  请先编辑 $DEST/.env 填好凭据，然后执行："
   echo "     systemctl start ${SERVICE}"
   echo "     systemctl status ${SERVICE}"
-  echo "     curl http://127.0.0.1:18220/bridge/health"
+  echo "     curl http://127.0.0.1:18220/engine/health"
   exit 0
 fi
 
@@ -88,10 +88,10 @@ sleep 2
 echo ""
 if systemctl is-active --quiet ${SERVICE}; then
   echo "✓ 服务已启动"
-  curl -s http://127.0.0.1:18220/bridge/health || true
+  curl -s http://127.0.0.1:18220/engine/health || true
   echo ""
   echo "查看日志：journalctl -u ${SERVICE} -f"
-  echo "或：tail -f ${DEST}/data/bridge.log"
+  echo "或：tail -f ${DEST}/data/engine.log"
 else
   echo "✗ 启动失败，检查：journalctl -u ${SERVICE} -n 50"
   exit 1

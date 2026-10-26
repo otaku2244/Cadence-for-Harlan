@@ -23,7 +23,7 @@ const toneCfg = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'config', 'tone-harlan.json'), 'utf8')
 );
 
-// 与 bridge.js 的 normalizeTiers 完全一致：config 缺的档 4/5 显式指向档 3
+// 与 engine.js 的 normalizeTiers 完全一致：config 缺的档 4/5 显式指向档 3
 function normalizeTiers(profiles) {
   const out = {};
   for (const cluster of Object.keys(profiles || {})) {

@@ -12,7 +12,7 @@
 // 正确语义：投出去才释放（sent === true），且与 mark('contact') 同进同出。
 //
 // 为什么必须是跨进程：三道闸（inQuietHours / checkDailyLimit / assertBlockShape）
-//   全在 fireProactive 内部，而 bridge.js 一 require 就起服务，单测拿不到。
+//   全在 fireProactive 内部，而 engine.js 一 require 就起服务，单测拿不到。
 //
 // 三段：
 //   A 日上限未用 → contact 真投出 → **释放**（-0.35）
@@ -131,7 +131,7 @@ function readLog() { try { return fs.readFileSync(LOG, 'utf8'); } catch (_) { re
   ].join('\n');
   fs.writeFileSync(ENV_PATH, env, 'utf8');
 
-  const child = spawn(process.execPath, [path.join(ROOT, 'bridge.js')], {
+  const child = spawn(process.execPath, [path.join(ROOT, 'engine.js')], {
     cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
   });
   let bootLog = '';
@@ -140,7 +140,7 @@ function readLog() { try { return fs.readFileSync(LOG, 'utf8'); } catch (_) { re
 
   await wait(1200);
   check('桥启动（health ok）',
-    (await req(BRIDGE_PORT, '/bridge/health')).status === 200);
+    (await req(BRIDGE_PORT, '/engine/health')).status === 200);
 
   const payload = {
     model: 'x',
@@ -194,7 +194,7 @@ function readLog() { try { return fs.readFileSync(LOG, 'utf8'); } catch (_) { re
 
   // ── 阶段 C：源码断言（防回退）──
   // 上面两条依赖"tick 恰好触发"，理论上会被环境抖动影响；这里不看运气。
-  const src = fs.readFileSync(path.join(ROOT, 'bridge.js'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'engine.js'), 'utf8');
   const seg = (() => {
     const i = src.indexOf("if (t.action === 'contact')");
     const j = src.indexOf("} else if (t.action === 'find_activity')", i);

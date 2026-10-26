@@ -1,7 +1,7 @@
 'use strict';
 // arousal 上升通道验证：在给定 rate 下，a 从 0 爬到 0.3 需要多久。
 // 用法：node arousal_probe.js <rate> [threshold]
-const { createCadence } = require('/root/cadence-bridge/vendor/cadence.js');
+const { createCadence } = require('/root/cadence/vendor/cadence.js');
 
 const RATE = parseFloat(process.argv[2] || '0.007');
 const THRESH = parseFloat(process.argv[3] || '0.5');

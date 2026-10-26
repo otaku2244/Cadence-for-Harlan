@@ -1,9 +1,9 @@
 'use strict';
-// 给 bridge.js 补「沉降路」两处接线（vendor 原生参数，桥此前没接）
+// 给 engine.js 补「沉降路」两处接线（vendor 原生参数，桥此前没接）
 // 跑法：node _test/patch_bridge_drift.js
 const fs = require('fs');
 
-const P = '/root/cadence-bridge/bridge.js';
+const P = '/root/cadence/engine.js';
 const src = fs.readFileSync(P, 'utf8');
 
 const CFG_ANCHOR = "  activityConnectionRelief: parseFloat(process.env.ACTIVITY_CONNECTION_RELIEF || '0'),";
@@ -34,7 +34,7 @@ let out = spliceOnce(src, CFG_ANCHOR, CFG_ADD, 'CFG');
 out = spliceOnce(out, RATES_ANCHOR, RATES_ADD, 'rates');
 
 const ts = new Date().toISOString().replace(/[:.]/g, '-');
-const bak = '/root/backup/bridge.js.bak-drift-' + ts;
+const bak = '/root/backup/engine.js.bak-drift-' + ts;
 fs.writeFileSync(bak, src);
 fs.writeFileSync(P, out);
 

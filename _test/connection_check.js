@@ -10,18 +10,18 @@
 //     vendor/cadence.js:41   connectionOnReply 已标 [已弃用]「现由 LLM delta 接管」
 //     vendor/cadence.js:277  「连接需求降幅现由外部 LLM 分析…通过 applyDelta 注入」
 //   撤掉后 connection 由「判定器 delta + tick 漂移」驱动；判定没跑成时
-//   由 bridge.js 的 replyRelief() 兜底一顿 -CONNECTION_RELIEF。
+//   由 engine.js 的 replyRelief() 兜底一顿 -CONNECTION_RELIEF。
 //
 // 三层：
 //   A 行为层 —— 真引擎，验证 delta 真能推动 c（并给出与旧行为的对照）
 //   B 阈值层 —— 敷衍几次能过线
-//   C 接线层 —— 静态断言 bridge.js 的兜底条件挂对了地方
+//   C 接线层 —— 静态断言 engine.js 的兜底条件挂对了地方
 
 const fs = require('fs');
 const path = require('path');
 const { createCadence } = require('../vendor/cadence.js');
 
-// 与 bridge.js CFG 的默认值同步（改一边记得改另一边）
+// 与 engine.js CFG 的默认值同步（改一边记得改另一边）
 const RELIEF = 0.35;
 // vendor 的三个消费阈值（vendor/cadence.js:113-120 的 thresholds 默认值）
 const OBSERVATION = 0.20;
@@ -127,9 +127,9 @@ const r3 = (x) => Math.round(x * 1000) / 1000;
   check('【旧行为对照】reset 后 -0.15（她热情）→ 也是 0，负向完全无效',
     (await old2.getState()).connection === 0, 'c=' + r3((await old2.getState()).connection));
 
-  // ══════════ C. 接线层：bridge.js 的兜底挂对地方了吗 ══════════
-  console.log('\nC. bridge.js 接线（静态断言）\n');
-  const src = fs.readFileSync(path.join(__dirname, '..', 'bridge.js'), 'utf8');
+  // ══════════ C. 接线层：engine.js 的兜底挂对地方了吗 ══════════
+  console.log('\nC. engine.js 接线（静态断言）\n');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'engine.js'), 'utf8');
 
   check('bridge 不再调 cadence.resetConnection()', !/cadence\.resetConnection\(/.test(src));
   check('replyRelief 有定义', /function replyRelief\(reason\)/.test(src));

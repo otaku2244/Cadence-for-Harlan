@@ -117,9 +117,9 @@ async function simulate(days, pollMin) {
     if (hasContact && hasFind) rec.bothInOneTick++;
     if (hasContact && inQuiet(abs)) rec.contactDuringQuiet++;
 
-    // ── 投递（照抄 fireProactive 的闸门；**衰减无条件执行**，与 bridge.js 一致）──
+    // ── 投递（照抄 fireProactive 的闸门；**衰减无条件执行**，与 engine.js 一致）──
     for (const t of triggers) {
-      // 同场景冷却：与 bridge.js tickOnce 一致，通过且真投出才记账
+      // 同场景冷却：与 engine.js tickOnce 一致，通过且真投出才记账
       // （被静默/日上限挡掉的不吃冷却 —— 桥里是 `if (sent) mark`）
       if ((abs - lastFireAt[t.action]) < COOLDOWN_MIN) continue;
       if (!inQuiet(abs) && sendCount < DAILY_MAX) {

@@ -15,7 +15,7 @@
 """
 import io, sys
 
-P = "/root/cadence-bridge/lib/analyzer.js"
+P = "/root/cadence/lib/analyzer.js"
 
 A = """    // 关闭思考链（仅对推理型模型有意义）。deepseek-flash 实测：
     //   thinking:{type:"disabled"} → reasoning_content 消失、completion_tokens 从 66 降到 5

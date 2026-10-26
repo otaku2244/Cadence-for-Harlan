@@ -20,7 +20,7 @@ const desc = createDescriber(cfg.describe);
 const bN = (st, g, opts, so, po) => buildProactiveNotice(st, g, opts, so, po, desc);
 const bI = (st, g) => buildInjectionBlock(st, g, desc);
 
-// ── 与 bridge.js 中 shouldInject 相同的实现（同步维护）──
+// ── 与 engine.js 中 shouldInject 相同的实现（同步维护）──
 // ⚠️ 五个轴都要在：immersion 自 2026-10-08 起也是块文本的一部分（描述层段4 读它），
 //    漏掉它 = 冲浪跑完、段4 该从「没在做什么特别的事。」变成「刚才在上网冲浪。」
 //    却被节流静默吃掉。用例 ⑥ 就是钉这一条。

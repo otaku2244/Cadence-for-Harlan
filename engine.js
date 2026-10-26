@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ════════════════════════════════════════════════════════════════
-//  cadence-bridge · 潮汐基频注入桥
+//  cadence · 潮汐基频注入桥
 //
 //  定位：Lattice 网关前面的一层反向代理。用户在 Operit/OMate 发消息
 //        → 桥 → 注入【潮汐基频·此刻】块 → Lattice → 上游模型。
@@ -88,11 +88,18 @@ const CFG = {
   // 判定器去重窗口：工具轮里同一段对话只喂一次。0 = 关闭。
   analyzeDedupSeconds: parseInt(process.env.ANALYZE_DEDUP_SECONDS || '900', 10),
 
-  // ── 从容防御：激活 find_activity 的 poise_block 通道 ──────────────
-  // vendor 默认 poiseDefendThreshold = 1.0，是"永不触发"的哨兵值（connection 上限就是 1）
-  // → poise 永远不会因冷落升到 poiseBlock(0.5) → find_activity 全天 0 次。
-  // 0.20 = observation 线，语义正好是"开始留意她，自持就跟着升温"。
-  poiseDefendThreshold: parseFloat(process.env.POISE_DEFEND_THRESHOLD || '0.20'),
+  // ── 从容防御：默认关闭（2026-10-25 复盘裁定）──────────────
+  // 这段漂移原本只服务于 find_activity 的 poise_block 通道，而 find_activity 已在
+  // 2026-10-10 整条阉割（vendor/cadence.js:458-473），下游没有任何消费方。
+  // 它的实际副作用是**绝对值吸附器**：只要 connection ≥ 阈值，poise 就被拉向 target，
+  // 不论偏高偏低 → poise 退化成"她在不在"的读数，情绪信息被抹平。
+  // 实测（bridge.log 10-04~10-25，1297 次注入）：阈值 0.35 时 c 有 77% 时间 ≥0.50、
+  // 42% 时间 =1.00，吸附几乎常开；10-25 全天 p 钉在 [0.33,0.50]，27 格只剩 1 格在用。
+  // 故默认置 999 = 永久关闭，poise 只由判定器 delta 驱动 + 向 0 慢回归。
+  // ⚠️ vendor 的 1.0 哨兵不可用：判定是 `c >= threshold` 而 c 上限正好 1.0，
+  //    c 饱和时会照样触发（实测仍有 37% 时间命中）。
+  // 回滚：POISE_DEFEND_THRESHOLD=0.35。
+  poiseDefendThreshold: parseFloat(process.env.POISE_DEFEND_THRESHOLD || '999'),
   // vendor 默认 0.003 在 c∈[0.35,0.50) 的窗口里涨不到 0.5（实测差 0.05），
   // 必须 ≥0.004 才能在窗口关闭（c 越过强制线）之前把 poise 顶上去。见 _test/scan_activity.js。
   poiseDefendRate: parseFloat(process.env.POISE_DEFEND_RATE || '0.004'),
@@ -360,6 +367,72 @@ function replyRelief(reason) {
     .catch((e) => log('WARN', 'reply relief failed: ' + e.message));
 }
 
+// ── 判定器喂料（2026-10-26 从请求路径抽出）────────────
+// pipeline-gateway 接管请求路径后，桥不再看到请求体，判定输入改由
+// POST /pipeline/observe 送来。去重与兜底语义与原实现逐字一致。
+function feedAnalyzer(dialog) {
+  let connectionHandled = false;
+  if (dialog.length >= 2 && CFG.llmKey) {
+    const dialogKey = dialogKeyOf(dialog);
+    if (!dialogDedup.accept(dialogKey)) {
+      connectionHandled = true; // 同一轮：前一次已经判过
+      if (dialogKey !== _lastDedupSkipKey) {
+        _lastDedupSkipKey = dialogKey;
+        log('INFO', 'analyzer skipped: dialog not advanced (tool turn, same last user msg)');
+      }
+    } else {
+      _lastDedupSkipKey = null;
+      connectionHandled = true;
+      setImmediate(() => {
+        analyzeDialog(dialog, { ...CFG, log }).then((delta) => {
+          if (delta) {
+            cadence.applyDelta(delta).catch((e) => log('WARN', 'applyDelta failed: ' + e.message));
+            log('INFO', 'delta applied: ' + JSON.stringify(delta));
+          } else {
+            replyRelief('analyzer returned empty');
+          }
+        }).catch((e) => {
+          log('WARN', 'analyzer failed: ' + e.message);
+          replyRelief('analyzer failed');
+        });
+      });
+    }
+  }
+  if (!connectionHandled) replyRelief('not analyzed');
+  return connectionHandled;
+}
+
+// ── 当前注入块（供 pipeline-gateway 拉取）──────────────
+// 实时按当前 state 生成，不读缓存：pipeline 接管后聊天请求不再经过本进程，
+// 任何"请求时顺带更新"的快照都会永久停在旧值。
+// 形状守卫在这里做（末行不对宁可返回空块）——这是跨系统契约，不是语义判断。
+async function currentBlockPayload() {
+  const state = await cadence.getState();
+  let block = '';
+  try {
+    block = buildInjectionBlock(state, toneGrid, describer);
+  } catch (e) {
+    log('WARN', 'pipeline block build failed: ' + e.message);
+  }
+  if (block) {
+    const problems = assertBlockShape(block);
+    if (problems.length) {
+      log('ERROR', 'pipeline block shape invalid: ' + problems.join(' | '));
+      block = '';
+    }
+  }
+  const sig = [state.connection, state.poise, state.valence, state.arousal]
+    .map((x) => (Number(x) || 0).toFixed(2)).join(',');
+  return {
+    block, sig, at: Date.now(),
+    state: {
+      connection: state.connection, poise: state.poise,
+      valence: state.valence, arousal: state.arousal, immersion: state.immersion,
+    },
+  };
+}
+
+
 // ── 冷却表恢复（2026-10-10）──────────────────────
 // 必须在首次 tick / 首次主动唤醒判断之前执行，否则重启后的第一轮
 // 会当成"从未触发过"直接放行。loadState() 读的就是 state.json。
@@ -559,9 +632,9 @@ const server = http.createServer((req, res) => {  const u = new URL(req.url, 'ht
   if (res.setTimeout) res.setTimeout(0);
 
   // 健康检查
-  if (u.pathname === '/bridge/health') {
+  if (u.pathname === '/engine/health') {
     res.writeHead(200, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', engine: 'cadence-bridge', version: '1.0.0' }));
+    res.end(JSON.stringify({ status: 'ok', engine: 'cadence', version: '1.0.0' }));
     return;
   }
 
@@ -580,6 +653,58 @@ const server = http.createServer((req, res) => {  const u = new URL(req.url, 'ht
   req.on('data', (c) => chunks.push(c));
   req.on('end', async () => {
     let bodyBuf = Buffer.concat(chunks);
+
+    // ── pipeline-gateway 接口（2026-10-26）──────────────────────
+    // /pipeline/inject  : GET，返回当前块 + 状态签名 + 生成时间
+    // /pipeline/observe : POST，接收对话快照（末 4 条），喂判定器
+    // 两者都只搬运，判断仍在本进程（判定器、引擎）。
+    if (u.pathname === '/pipeline/inject') {
+      try {
+        const payload = await currentBlockPayload();
+        res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+        res.end(JSON.stringify(payload));
+      } catch (e) {
+        log('ERROR', 'pipeline inject failed: ' + e.message);
+        res.writeHead(500, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: { message: e.message } }));
+      }
+      return;
+    }
+    if (u.pathname === '/pipeline/observe') {
+      if (req.method !== 'POST') {
+        res.writeHead(405, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: { message: 'method not allowed' } }));
+        return;
+      }
+      let payload;
+      try {
+        payload = JSON.parse(bodyBuf.toString('utf8') || '{}');
+      } catch (e) {
+        res.writeHead(400, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: { message: 'bad json' } }));
+        return;
+      }
+      // 入参是原始 messages 数组，不是已提取的对话。
+      // 提取与"剥块"都走本进程现成的函数，避免两边剥法分叉。
+      const body = { messages: Array.isArray(payload.messages) ? payload.messages : [] };
+      const dialog = extractRecentDialog(body, 4);
+      // 回环识别依赖 loopbackGuard 的认领表，只有本进程有；claim 幂等（计数 +1）。
+      const isLoopback = loopbackGuard.claim(extractLastUserText(body));
+      try {
+        if (isLoopback) {
+          log('INFO', `OBSERVE loopback scene=${isLoopback.scene} n=${isLoopback.claims}`);
+        } else {
+          feedAnalyzer(dialog);
+        }
+      } catch (e) {
+        log('WARN', 'observe failed: ' + e.message);
+      }
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ status: 'ok', loopback: !!isLoopback }));
+      return;
+    }
+
+
 
     // ── 自由冲浪产物回投（surf → 桥 → 自留地）──
     // surf 不自己投递：回环认领表、静默时段、日上限都只在桥进程里，
@@ -739,35 +864,7 @@ const server = http.createServer((req, res) => {  const u = new URL(req.url, 'ht
     //   判定器**跑成了** → connection 的降幅就在 delta 里，不再兜底。
     //   被 dedup 跳过的工具轮 → 同一轮已经判过、delta 已经生效 → 也不兜底。
     //   其余全是"她开口了但没人判" → replyRelief() 补一顿固定缓解。
-    let connectionHandled = false;
-    if (!loopback && dialog.length >= 2 && CFG.llmKey) {
-      const dialogKey = dialogKeyOf(dialog);
-      if (!dialogDedup.accept(dialogKey)) {
-        connectionHandled = true; // 同一轮：前一次已经判过
-        // 同一轮只提示一次（工具可能连发多次）
-        if (dialogKey !== _lastDedupSkipKey) {
-          _lastDedupSkipKey = dialogKey;
-          log('INFO', 'analyzer skipped: dialog not advanced (tool turn, same last user msg)');
-        }
-      } else {
-        _lastDedupSkipKey = null;
-        connectionHandled = true;
-        setImmediate(() => {
-          analyzeDialog(dialog, { ...CFG, log }).then((delta) => {
-            if (delta) {
-              cadence.applyDelta(delta).catch((e) => log('WARN', 'applyDelta failed: ' + e.message));
-              log('INFO', 'delta applied: ' + JSON.stringify(delta));
-            } else {
-              replyRelief('analyzer returned empty');
-            }
-          }).catch((e) => {
-            log('WARN', 'analyzer failed: ' + e.message);
-            replyRelief('analyzer failed');
-          });
-        });
-      }
-    }
-    if (!loopback && !connectionHandled) replyRelief('not analyzed');
+    if (!loopback) feedAnalyzer(dialog);
 
     // ── 6. 转发 ──
     forward(u.pathname, u.search, req.method, req.headers, outBuf, res);

@@ -4,11 +4,11 @@
     冲浪本体（spawnSurf / /surf/finding / CFG.surf* / .env SURF_*）一律保留不动。
 
 幂等：以 MARK 注释为标记。
-用法：python3 cut_find_activity.py /root/cadence-bridge
+用法：python3 cut_find_activity.py /root/cadence
 """
 import sys, os, io
 
-ROOT = sys.argv[1] if len(sys.argv) > 1 else '/root/cadence-bridge'
+ROOT = sys.argv[1] if len(sys.argv) > 1 else '/root/cadence'
 MARK = '[CUT-FIND-ACTIVITY 2026-10-10]'
 
 def read(p):
@@ -169,13 +169,13 @@ else:
     print('[OK] vendor/cadence.js 已阉割')
 
 # ══════════════════════════════════════════════════════════════
-# 2) bridge.js —— 删 find_activity 消费分支（保留 spawnSurf 定义与 /surf/finding）
+# 2) engine.js —— 删 find_activity 消费分支（保留 spawnSurf 定义与 /surf/finding）
 # ══════════════════════════════════════════════════════════════
-bpath = os.path.join(ROOT, 'bridge.js')
+bpath = os.path.join(ROOT, 'engine.js')
 b = read(bpath)
 
 if MARK in b:
-    print('[SKIP] bridge.js 已阉割过')
+    print('[SKIP] engine.js 已阉割过')
 else:
     old_2a = """      } else if (t.action === 'find_activity') {
         // ⚠️ 冷却必须在这里判，且必须在 spawn 之前 ——
@@ -238,6 +238,6 @@ else:
     b = rep_once(b, old_s, new_s, 'bridge.spawnSurfMark')
 
     write(bpath, b)
-    print('[OK] bridge.js 消费分支已删 + surf 挂载点已标记')
+    print('[OK] engine.js 消费分支已删 + surf 挂载点已标记')
 
 print('done. changed=%s' % changed)

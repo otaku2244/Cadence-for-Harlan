@@ -1,7 +1,7 @@
 'use strict';
 // diag_prompt.js —— 当前提示词实现相对原作者设计的偏离清单（穷举 + 可复跑）
 //
-// 用法（cadence-bridge 目录下）: node _test/diag_prompt.js
+// 用法（cadence 目录下）: node _test/diag_prompt.js
 //
 // 三个对照对象：
 //   作者默认  vendor/cadence.js:743-905   defaultPromptContext() / defaultStyleGuidance()

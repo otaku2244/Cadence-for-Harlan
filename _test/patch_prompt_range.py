@@ -4,7 +4,7 @@
 """
 import io, sys, re
 
-PATH = r"/root/cadence-bridge/config/analyze-prompt-user.txt"
+PATH = r"/root/cadence/config/analyze-prompt-user.txt"
 
 ANCHOR_1 = """connection（连接需求）：负 = 被满足了，不急着找她（最多 -0.50）
                         正 = 没被满足/被冷落/话没说完（最多 +0.30）

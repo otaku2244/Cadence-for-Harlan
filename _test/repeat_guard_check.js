@@ -1,6 +1,6 @@
 'use strict';
 // ════════════════════════════════════════════════════
-// `lib/repeat-guard.js` 契约测试 + `bridge.js` 接线静态断言
+// `lib/repeat-guard.js` 契约测试 + `engine.js` 接线静态断言
 //
 // 跑法：node _test/repeat_guard_check.js
 // ════════════════════════════════════════════════════
@@ -137,11 +137,11 @@ console.log('【B】createDialogDedup');
 }
 
 // ════════════════════════════════════════════════════
-// C. bridge.js 接线静态断言
+// C. engine.js 接线静态断言
 // ════════════════════════════════════════════════════
-console.log('【C】bridge.js 接线');
+console.log('【C】engine.js 接线');
 
-const src = fs.readFileSync(path.join(__dirname, '..', 'bridge.js'), 'utf8');
+const src = fs.readFileSync(path.join(__dirname, '..', 'engine.js'), 'utf8');
 const at = (needle) => src.indexOf(needle);
 
 ok('C1 引入了 repeat-guard', src.includes("require('./lib/repeat-guard.js')"));

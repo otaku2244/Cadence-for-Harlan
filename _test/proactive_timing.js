@@ -17,7 +17,7 @@
 // 阈值：observation=0.20, considerContact=0.35, forceContact=0.50
 // ============================================================
 const path = require('path');
-const ROOT = '/root/cadence-bridge';
+const ROOT = '/root/cadence';
 const { createCadence } = require(path.join(ROOT, 'vendor/cadence.js'));
 
 // ── 线上 .env 实值 ──

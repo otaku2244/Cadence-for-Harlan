@@ -10,7 +10,7 @@
 //      —— 线上 POISE_DEFEND_THRESHOLD=1.0，c 上限也是 1.0，critical
 // ============================================================
 const path = require('path');
-const ROOT = '/root/cadence-bridge';
+const ROOT = '/root/cadence';
 const { createCadence } = require(path.join(ROOT, 'vendor/cadence.js'));
 
 const CFG = {

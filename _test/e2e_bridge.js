@@ -117,7 +117,7 @@ function check(name, cond, detail) {
     'LLM_BREAKER_SECONDS=0',
   ].join('\n');
   fs.writeFileSync(ENV_PATH, env, 'utf8');
-  const child = spawn(process.execPath, [path.join(ROOT, 'bridge.js')], {
+  const child = spawn(process.execPath, [path.join(ROOT, 'engine.js')], {
     cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
   });
   let bootLog = '';
@@ -131,7 +131,7 @@ function check(name, cond, detail) {
   check('鉴权：错误 token 返回 401', bad.status === 401, 'status=' + bad.status);
 
   // ── 用例 2：健康检查 ──
-  const h = await req(BRIDGE_PORT, '/bridge/health');
+  const h = await req(BRIDGE_PORT, '/engine/health');
   check('健康检查返回 ok', h.status === 200 && h.text.includes('"ok"'), h.text.slice(0, 60));
 
   // ── 用例 3：注入 + 转发 + 窗口透传 ──

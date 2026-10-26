@@ -14,7 +14,7 @@
 // 三层：
 //   A 行为层 —— 真引擎，验证通道开关真的改变触发结果
 //   B 缓解层 —— activityConnectionRelief 的扣减规则（含同类型不重复扣 / 0.01 下限）
-//   C 接线层 —— 静态断言 bridge.js 把两个参数挂对了地方
+//   C 接线层 —— 静态断言 engine.js 把两个参数挂对了地方
 
 const fs = require('fs');
 const path = require('path');
@@ -183,9 +183,9 @@ const r3 = (x) => Math.round(x * 1000) / 1000;
       r3((await j.getState()).connection) === 0.01, 'c=' + r3((await j.getState()).connection));
   }
 
-  // ══════════ C. 接线层（bridge.js 源码断言） ══════════
-  console.log('\nC. bridge.js 接线\n');
-  const src = fs.readFileSync(path.join(__dirname, '..', 'bridge.js'), 'utf8');
+  // ══════════ C. 接线层（engine.js 源码断言） ══════════
+  console.log('\nC. engine.js 接线\n');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'engine.js'), 'utf8');
   // 去掉注释行，只在真实代码里匹配
   const code = src.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
 

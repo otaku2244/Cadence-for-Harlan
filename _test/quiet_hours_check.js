@@ -1,7 +1,7 @@
 'use strict';
 // 静默时段 / 日上限跨天 的时区正确性回归测试
 //
-// 背景 bug（2026-10-05）：bridge.js 用 new Date().getHours() 判静默，
+// 背景 bug（2026-10-05）：engine.js 用 new Date().getHours() 判静默，
 // 而 VPS 系统时区是 UTC，导致 QUIET_START=0 / QUIET_END=8 实际变成
 // 「UTC 0-8 点静默」＝北京时间 8:00-16:00 静默 —— 白天被当成夜里。
 //

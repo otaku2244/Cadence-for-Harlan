@@ -5,7 +5,7 @@
 //   Q4: 她「间歇说话」时，唤醒间隔是多少？（真实日常场景）
 // ============================================================
 const path = require('path');
-const ROOT = '/root/cadence-bridge';
+const ROOT = '/root/cadence';
 const { createCadence } = require(path.join(ROOT, 'vendor/cadence.js'));
 
 const CFG = {

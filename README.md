@@ -121,7 +121,7 @@ Lattice 零改动，潮汐基频源码（`vendor/`）零改动。
 ## 0.8 文件结构
 
 ```
-bridge.js              主程序：HTTP 反代 + 注入 + tick + 主动唤醒 + MCP
+engine.js              主程序：HTTP 反代 + 注入 + tick + 主动唤醒 + MCP
 lib/
   inject-text.js       块拼装、剥离、形状断言（契约常量在这里）
   describe.js          描述层：只剩 connection 四段
@@ -160,14 +160,14 @@ deploy.sh
 ## 0.10 运维速查
 
 ```bash
-systemctl restart cadence-bridge          # 改配置/代码后重启
+systemctl restart cadence          # 改配置/代码后重启
 node _test/render_now.js                # 看五轴 + 实际渲染出的三种块
 node _test/contract_check.js            # 契约 41 条，必须全过
 node _test/arousal_probe.js 0.007 0.5   # 模拟 arousal 爬升
-tail -f data/bridge.log                 # 日志
+tail -f data/engine.log                 # 日志
 ```
 
-**改 `state.json` 的铁律**：必须先 `systemctl stop cadence-bridge`，改完再 `start`。否则运行中的进程会 tick + save，把旧字段写回去，数值静默丢失（2026-10-23 踩过一次，`poise` 0.06 一度归零）。
+**改 `state.json` 的铁律**：必须先 `systemctl stop cadence`，改完再 `start`。否则运行中的进程会 tick + save，把旧字段写回去，数值静默丢失（2026-10-23 踩过一次，`poise` 0.06 一度归零）。
 
 **推送 GitHub**：VPS 上没有凭证，走本机中继 —— VPS `git bundle create` → 下载 → 本机 clone 后 `git push`（本机 Git 凭据管理器存着账号）。
 
@@ -346,7 +346,7 @@ vendor/cadence.js:277   // 连接需求降幅现由外部 LLM 分析（如 analy
 
 | 项 | 做法 |
 |---|---|
-| `cadence.resetConnection()` 调用 | **删除**（`bridge.js` 请求主流程）。connection 改由「判定器 delta + tick 漂移」驱动 |
+| `cadence.resetConnection()` 调用 | **删除**（`engine.js` 请求主流程）。connection 改由「判定器 delta + tick 漂移」驱动 |
 | 判定器的 `connection` 维 | **保留**（`lib/analyzer.js` 规则 7 + clamp `[-0.50, 0.30]` 原样）—— 撤 reset 是为了让它生效，不是砍掉它 |
 | 「她开口」的缓解兜底 | 新增 `replyRelief()`：判定**没跑成**时补一顿 `applyDelta({connection: -CONNECTION_RELIEF})`，默认 `0.35` |
 
@@ -367,7 +367,7 @@ vendor/cadence.js:277   // 连接需求降幅现由外部 LLM 分析（如 analy
 **不影响什么**：描述层第 1 段仍然只在主动唤醒侧出。理由从"c 恒为 0"换成了
 「段1 的问句全是**时间维度**的（「她很久没动静了。」），而此刻块的场景是"她刚说完这一句"，一句都不成立」。
 
-回归：`_test/connection_check.js`（24 例，含新旧行为对照）+ `_test/e2e_bridge.js` 用例 4/4b
+回归：`_test/connection_check.js`（24 例，含新旧行为对照）+ `_test/e2e_engine.js` 用例 4/4b
 （跨进程实证：2 次 `+0.15` → `connection = 0.30` 越过留意线；判定器失败 → 兜底一次落到 0）。
 
 ---
@@ -432,7 +432,7 @@ vendor 把 ② 的阈值默认成 `-1.0`（永不触发），所以此前只能�
 2. `activityConnectionRelief` 只在**活动类型变化**时扣（同类型连续冲浪不重复扣），
    且有 `0.01` 下限（防止清零导致阈值永不触达）。
 
-**vendor 一行未动**：两处都是 `bridge.js` 把 `thresholds` / `rates` 传进 `createCadence` 的既有接口。
+**vendor 一行未动**：两处都是 `engine.js` 把 `thresholds` / `rates` 传进 `createCadence` 的既有接口。
 回归：`_test/valence_channel_check.js`（16 例，三层：通道行为 / 缓解规则 / 接线断言）。
 
 ---
@@ -527,7 +527,7 @@ vendor 把 ② 的阈值默认成 `-1.0`（永不触发），所以此前只能�
 
 | 文件 | 作用 |
 |---|---|
-| `bridge.js` | 桥本体。反向代理 + 注入 + 判定器调度 + tick 定时器 |
+| `engine.js` | 桥本体。反向代理 + 注入 + 判定器调度 + tick 定时器 |
 | `lib/inject-text.js` | 状态 → 「此刻块」/「自主唤醒通知」文本 + `stripCadenceBlocks()`（剥离潮汐基频块） |
 | `lib/loopback.js` | **回环守卫**。认出"这条 user 消息其实是桥自己发出去的通知" |
 | `lib/describe.js` | **描述层**。四段状态陈述（处境），拼在块头与 45 格之间。2026-10-08 新增，接替已退役的 `lib/tone-wrap.js` |
@@ -544,7 +544,7 @@ vendor 把 ② 的阈值默认成 `-1.0`（永不触发），所以此前只能�
 | `deploy.sh` | VPS 部署脚本 |
 | `提示词全量清单.md` | **给 AI 读的 90 条 45 格全文**（含阅读说明、五轴定义、场景区别、阈值速查、描述层四段表） |
 | `提示词全量清单.html` | **给人看的可折叠验收清单**（9 簇 × 5 档 = 45 格） |
-| `_test/e2e_bridge.js` | 端到端回归（25 项，含「冲浪回投 → 活动登记 → 段4 出现在注入块」跨进程实证） |
+| `_test/e2e_engine.js` | 端到端回归（25 项，含「冲浪回投 → 活动登记 → 段4 出现在注入块」跨进程实证） |
 | `_test/simulate_day.js` | 整日漂移 + 多窗口验证 |
 | `_test/param_scan.js` | 参数扫描（定节奏用） |
 | `_test/analyze_check.js` | 判定器真实调用验证（7 用例） |
@@ -556,7 +556,7 @@ vendor 把 ② 的阈值默认成 `-1.0`（永不触发），所以此前只能�
 | `_test/simulate_loop.js` | **闭环模拟**：真判定器 + 7 天语料 → CSV |
 | `_test/anger_check.js` | **真生气 vs 敷衍判别专项**（5 例） |
 | `_test/throttle_check.js` | **注入节流专项**：数值微变是否重注（6 例，含「只有 immersion 动」） |
-| `_test/activity_check.js` | **活动登记专项**（23 例）：`recordActivity` 契约 + 段4 三档/死带/不编造 + 有产物时关段4 + `bridge.js` 接线点静态断言 |
+| `_test/activity_check.js` | **活动登记专项**（23 例）：`recordActivity` 契约 + 段4 三档/死带/不编造 + 有产物时关段4 + `engine.js` 接线点静态断言 |
 | `_test/mcp_check.js` | **MCP 协议专项**（57 例）：握手/SSE/鉴权 + 队列取最新策略 |
 | `_test/quiet_hours_check.js` | **业务时区专项**：静默时段 / 日上限跨天（25 例） |
 | `_test/loopback_check.js` | **回环守卫专项**（66 例）：认领命中/可重复认领/TTL/剥离三版尾句/唤醒轮含工具循环/回环让位/通知内容完整性/源码顺序断言 |
@@ -594,13 +594,13 @@ vendor 把 ② 的阈值默认成 `-1.0`（永不触发），所以此前只能�
 
 ### 1. 上传
 
-把整个 `cadence-bridge/` 目录传到 VPS（例如 `/root/cadence-bridge`）。
+把整个 `cadence/` 目录传到 VPS（例如 `/root/cadence`）。
 
 ### 2. 填配置
 
 ```bash
-cp /root/cadence-bridge/.env.example /root/cadence-bridge/.env
-nano /root/cadence-bridge/.env
+cp /root/cadence/.env.example /root/cadence/.env
+nano /root/cadence/.env
 ```
 
 必填三项：
@@ -614,7 +614,7 @@ nano /root/cadence-bridge/.env
 ### 3. 跑部署脚本
 
 ```bash
-bash /root/cadence-bridge/deploy.sh
+bash /root/cadence/deploy.sh
 ```
 
 脚本会：检查 Node ≥20 → 安装文件 → 生成 systemd unit → 启动 → 健康检查。
@@ -622,9 +622,9 @@ bash /root/cadence-bridge/deploy.sh
 ### 4. 验证
 
 ```bash
-systemctl status cadence-bridge
-curl http://127.0.0.1:18220/bridge/health
-tail -f /root/cadence-bridge/data/bridge.log
+systemctl status cadence
+curl http://127.0.0.1:18220/engine/health
+tail -f /root/cadence/data/engine.log
 ```
 
 ### 5. 改 Operit / OMate 的 Base URL
@@ -778,7 +778,7 @@ StreamableHttpError: Maximum reconnection attempts exceeded
   她还沉默时投出（正确）；`find_activity` 7/7 都在她已经开口之后才投出 —— 这是
   "她那句话让他不好受 → 他自己去消化"的自然结果，不是缺陷。
 - ✅ **静默/超日限时的 `contact` 触发照样扣 `-0.35`**（**2026-10-09 已修**）：
-  `bridge.js` 里 `await fireProactive(...)` 之后曾**无条件** `applyDelta({connection:-0.35})`，
+  `engine.js` 里 `await fireProactive(...)` 之后曾**无条件** `applyDelta({connection:-0.35})`，
   而 `fireProactive` 在静默/超日限/形状不合规时是 `return false` 早退、通知根本没投出去。
   7 天里 14 次 contact 有 7 次落在静默时段。代价在凌晨最明显：静默 8 小时里每个 tick
   （5min）都触发一次 contact、扣一次，c 被逐 tick 归零，"攒了一夜"的手感被抹平，
@@ -832,7 +832,7 @@ StreamableHttpError: Maximum reconnection attempts exceeded
 
 | # | 症状 | 位置 |
 |---|---|---|
-| ① | 多跑一次「她开口」的 connection 缓解，抹掉这次唤醒本身的距离感 | `bridge.js` 请求主流程 |
+| ① | 多跑一次「她开口」的 connection 缓解，抹掉这次唤醒本身的距离感 | `engine.js` 请求主流程 |
 | ② | 把唤醒通知当"她的发言"喂给判定器打分 → 凭空产生一次错误漂移 | 同上 |
 | ③ | **判定器每轮读到桥自己注入的此刻块**（最普遍，与唤醒无关） | `extractRecentDialog` 的调用顺序 |
 
@@ -960,7 +960,7 @@ Lattice 侧（fork 提交 `a5c1bdd`）在 `chat_context.py` 里加了三件事�
 |---|---|---|
 | 单一来源 | `lib/inject-text.js` 的 `BOUNDARY_INNER` | 只写**内文**，括号由代码拼 —— 想写错括号都写不出来 |
 | 形状自断言 | `assertBlockShape(block)` | 查首行、末行、块头唯一性 |
-| 运行时守卫 | `bridge.js` 注入前 + `fireProactive` 发送前 | **不合规就拒绝注入/拒绝发送**，宁可不给状态，也不能让她的话被吞 |
+| 运行时守卫 | `engine.js` 注入前 + `fireProactive` 发送前 | **不合规就拒绝注入/拒绝发送**，宁可不给状态，也不能让她的话被吞 |
 
 `composeBlock` 无条件把尾标记拼在最后，调用方不需要记得加。
 
@@ -1000,10 +1000,10 @@ Lattice 先按行取 `【…】` 里的标题、再拿**内文**比对，所以�
 
 | 项 | 位置 |
 |---|---|
-| 五轴状态 | `/root/cadence-bridge/data/state.json` |
-| 日志 | `/root/cadence-bridge/data/bridge.log` |
-| 服务 | `systemctl {start,stop,restart,status} cadence-bridge` |
-| 实时日志 | `journalctl -u cadence-bridge -f` |
+| 五轴状态 | `/root/cadence/data/state.json` |
+| 日志 | `/root/cadence/data/engine.log` |
+| 服务 | `systemctl {start,stop,restart,status} cadence` |
+| 实时日志 | `journalctl -u cadence -f` |
 
 **删掉 `state.json` = 重置情绪**（下次启动回到中性）。
 
@@ -1046,7 +1046,7 @@ v=0.60, p=0.20 且 a=0  →  pleased，表达照常，…      ← 渲染出的�
 **修法**：指纹取**数值**，不取文本。
 
 ```js
-// bridge.js
+// engine.js
 const sig = [state.connection, state.pride, state.valence, state.arousal]
   .map((x) => (Number(x) || 0).toFixed(2)).join(',');
 const changed = sig !== lastInjectSig;
@@ -1054,7 +1054,7 @@ const changed = sig !== lastInjectSig;
 
 模型看到的正文文本没变（`neutral，表达照常，…` 那行），但**只要数值动了就重注**。2 位小数 = 状态可感知变化阈值。
 
-**验证**：`_test/throttle_check.js` 5/5；`_test/e2e_bridge.js` 17/17；VPS 实测连续三轮 `inject=true`（正文全程一字未变）。
+**验证**：`_test/throttle_check.js` 5/5；`_test/e2e_engine.js` 17/17；VPS 实测连续三轮 `inject=true`（正文全程一字未变）。
 
 **观察点（2026-10-08 更新）**：原先 `connection` 每轮被 `resetConnection()` 清零，
 连接需求在频繁聊天时永远涨不起来。**reset 已撤**（见「二之二 · 补三」），
@@ -1081,7 +1081,7 @@ QUIET_START=0 / QUIET_END=8  的意图：凌晨 0 点到早 8 点别打扰
 **修法**：新增 `lib/clock.js`，所有业务时间判断走显式时区偏移。
 
 ```js
-// bridge.js
+// engine.js
 const clock = createClock(CFG.tzOffsetHours);          // lib/clock.js
 const today = clock.localDateStr();                     // 日上限跨天
 const inQuiet = clock.inQuietHours(null, quietStart, quietEnd);  // 静默判定
@@ -1269,13 +1269,13 @@ DAYS=3 node _test/simulate_loop.js     # 只跑前 3 天
 | 独处场景的正文 | `config/tone-harlan.json` 的 `sceneOverride` |
 | 判定标准（什么算冒犯、什么算示弱） | `config/analyze-prompt-user.txt` |
 | 主动唤醒的早晚/频率 | `.env` 的 `CONNECTION_RATE` / `PROACTIVE_MAX_PER_DAY` |
-| `contact` 开口后释放多少 `connection`、什么时候释放 | `bridge.js` 的 contact 分支（`-0.35`，**只在 `sent === true` 时执行** —— 静默/超日限/形状不合规被挡下的轮次不释放）。⚠️ 这个值与 `.env` 的 `CONNECTION_RELIEF` 是**两条互不重叠**的支路（那个管"判定器没跑成"的兜底），别合并成一个键 |
+| `contact` 开口后释放多少 `connection`、什么时候释放 | `engine.js` 的 contact 分支（`-0.35`，**只在 `sent === true` 时执行** —— 静默/超日限/形状不合规被挡下的轮次不释放）。⚠️ 这个值与 `.env` 的 `CONNECTION_RELIEF` 是**两条互不重叠**的支路（那个管"判定器没跑成"的兜底），别合并成一个键 |
 | **角色"自己去干活"（`find_activity`）的活跃度** | 走「低情绪」通道时：`.env` 的 `VALENCE_ACTIVITY_THRESHOLD` + `ACTIVITY_CONNECTION_RELIEF`；走「嘴硬」通道时：`PRIDE_DEFEND_THRESHOLD` / `PRIDE_DEFEND_RATE`。两通道**二选一**，见「二之二 · 补四」 |
 | **「冲浪 vs 找你」的配比** | `.env` 的 `ACTIVITY_CONNECTION_RELIEF`（冲浪压低 c → 抑制找你）。实测 0 → 4:4，0.10 → 6:2 |
 | 同一场景多久内不重复报 | `.env` 的 `ACTION_COOLDOWN_MINUTES`（2026-10-09 起默认 **60**；≥120 会让冲浪:找你 掉回 4:4） |
 | 判定器重复喂的抑制窗口 | `.env` 的 `ANALYZE_DEDUP_SECONDS`（默认 900） |
 | 注入块里显示什么 | `lib/inject-text.js` |
-| 注入节流（多久重注一次） | `bridge.js` 的 `shouldInject` / `.env` 的 `INJECT_THROTTLE_SECONDS` |
+| 注入节流（多久重注一次） | `engine.js` 的 `shouldInject` / `.env` 的 `INJECT_THROTTLE_SECONDS` |
 | MCP 工具的描述或返回值 | `lib/mcp.js` 的 `buildToolDefs` / `callTool` |
 | 换判定器模型 | `.env` 的 `LLM_BASE` / `LLM_KEY` / `LLM_MODEL` / `LLM_DISABLE_THINKING` |
 | 看判定器实际表现 | `node _test/simulate_loop.js`（闭环）或 `analyze_check.js`（单例） |
@@ -1349,7 +1349,7 @@ ACTION_COOLDOWN_MINUTES=180   # 同场景 3 小时内不重复触发；0 = 关�
 
 `tickOnce` 里判，`_test/scan_activity.js` 同款逻辑。**不拦投递侧** ——
 surf 跑完回投的产物照常发；否则 spawn 那一刻已记账，surf 回来必然还在冷却内，产物全被吃掉。
-同理 `bridge.js` 的 `fireProactive` 被静默时段/日上限挡下时**不记账**（`if (sent) mark`），
+同理 `engine.js` 的 `fireProactive` 被静默时段/日上限挡下时**不记账**（`if (sent) mark`），
 不然"夜里被静默挡掉"会白白吃掉一次冷却。
 
 ---
@@ -1369,13 +1369,13 @@ surf 跑完回投的产物照常发；否则 spawn 那一刻已记账，surf 回
 修法（`lib/repeat-guard.js` 的 `createDialogDedup`）：取**最后一条 user 文本**做轮次指纹，
 窗口内同指纹只喂一次；`ANALYZE_DEDUP_SECONDS` 默认 900（TTL 兜底：
 同一句话隔久了又出现仍应重新判）。
-`_test/e2e_bridge.js` 已加两个用例：同一份 messages 重发 → 判定器不涨；
+`_test/e2e_engine.js` 已加两个用例：同一份 messages 重发 → 判定器不涨；
 她说了新话 → 判定器必涨。
 
 ### ⚠️ 顺带修掉一个静默失效：`.env` 加载顺序
 
 `lib/analyzer.js` 在**模块顶层**读 `process.env.LLM_MIN_INTERVAL_SECONDS` /
-`LLM_BREAKER_SECONDS` 并算成常量，而 `bridge.js` 原先把 `loadEnvFile(...)` 写在
+`LLM_BREAKER_SECONDS` 并算成常量，而 `engine.js` 原先把 `loadEnvFile(...)` 写在
 `require('./lib/analyzer.js')` **之后** → 这两项配置**从来没生效过**（永远走默认 20s/300s）。
 现已把 `loadEnvFile` 提到所有 lib require 之前。
 **若你此前在 `.env` 里写过这两项、却发现行为没变，就是这个原因。**
@@ -1419,7 +1419,7 @@ surf 跑完回投的产物照常发；否则 spawn 那一刻已记账，surf 回
 
 | 通道 | 谁在跑 | 传的 env | 投递去向 | 线上跑过吗 |
 |---|---|---|---|---|
-| 桥 `spawnSurf()` | `bridge.js`，`find_activity` 越阈时 spawn 一次 | 强制 `DELIVERY_CHANNEL=cadence` + `AUTO_SCHEDULE=false` + `--once` | `POST /surf/finding` → 桥拼块 → 入队 | **0 次**（`bridge.log` 里 `surf spawning` 一条都没有） |
+| 桥 `spawnSurf()` | `engine.js`，`find_activity` 越阈时 spawn 一次 | 强制 `DELIVERY_CHANNEL=cadence` + `AUTO_SCHEDULE=false` + `--once` | `POST /surf/finding` → 桥拼块 → 入队 | **0 次**（`bridge.log` 里 `surf spawning` 一条都没有） |
 | `web-surf.service` | systemd 常驻（`ExecStart=/usr/bin/node dist/index.js`，无 `--once`，`Restart=always`） | 由进程**启动时**读到的 `.env` 决定 | `DELIVERY_CHANNEL=console` → 只写 `data/surf.log` | 在跑（今天 13:17 还出了一条） |
 
 关键点：

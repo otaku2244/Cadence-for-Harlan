@@ -9,7 +9,7 @@
 //   ④ 回环轮把 reactive 语域的此刻块叠在 proactive 语域的通知上（语域打架 + 档位行两套快照）
 //
 // 前两个由 lib/loopback.js 守，第三个由 lib/inject-text.js 的 stripCadenceBlocks
-// 加上 bridge.js 里的「先取 dialog 再注入」顺序共同守，第四个由 bridge.js 的
+// 加上 engine.js 里的「先取 dialog 再注入」顺序共同守，第四个由 engine.js 的
 // 「回环让位」注入条件守（[5]/[6] 两段）。最后一段是源码顺序断言。
 
 const fs = require('fs');
@@ -182,10 +182,10 @@ console.log('\n[4] 判定器输入 —— 端到端形态');
 }
 
 // ════════════════════════════════════════════════════
-console.log('\n[5] bridge.js 顺序断言（防回归）');
+console.log('\n[5] engine.js 顺序断言（防回归）');
 // ════════════════════════════════════════════════════
 {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'bridge.js'), 'utf8');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'engine.js'), 'utf8');
   const iDialog = src.indexOf('const dialog = extractRecentDialog(body, 4);');
   const iInject = src.indexOf('const r = injectIntoBody(body, block);');
   check('两处都能在源码里定位', iDialog > -1 && iInject > -1, { iDialog, iInject });
